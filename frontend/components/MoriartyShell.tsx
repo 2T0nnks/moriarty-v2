@@ -420,7 +420,7 @@ export default function MoriartyShell() {
 
             <label className="m-btn m-btn-ghost m-btn-icon" data-tip="Load circuit" style={{ cursor: 'pointer' }}>
               <Upload size={14} />
-              <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleLoad} />
+              <input ref={fileRef} type="file" accept=".json" style={{ display: 'none', position: 'absolute', width: 0, height: 0, opacity: 0 }} onChange={handleLoad} />
             </label>
 
             <div className="m-sep" />
