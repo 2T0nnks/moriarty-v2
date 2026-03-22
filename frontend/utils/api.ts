@@ -8,11 +8,11 @@
 import axios from 'axios';
 
 /** Base URL of the FastAPI backend.
- * Uses the Next.js proxy (/api/backend) to avoid CORS/mixed-content issues
- * when the frontend is served over HTTPS in the sandbox.
- * Override with NEXT_PUBLIC_API_URL for Docker deployments.
+ * NEXT_PUBLIC_API_URL is baked into the client bundle at build time.
+ * In Docker: set to http://localhost:8000 (the host-exposed backend port).
+ * In dev: falls back to http://localhost:8000.
  */
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/backend';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // ---------------------------------------------------------------------------
 // Shared types
