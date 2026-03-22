@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, Loader2, Bot, Trash2, AlertCircle, Cpu, Zap, Search,
-  ChevronDown, WifiOff, RotateCcw, Atom,
+  ChevronDown, WifiOff, RotateCcw, Atom, X,
 } from 'lucide-react';
 import { streamChatMessage, checkChatStatus, CircuitGrid } from '../utils/api';
 import { ModelSelector } from './ModelSelector';
@@ -439,6 +439,17 @@ export function ChatAssistant({
                 </IconBtn>
                 <IconBtn title="Clear chat" onClick={clearChat} disabled={isLoading}>
                   <Trash2 size={14} />
+                </IconBtn>
+                <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.08)', margin: '0 2px' }} />
+                <IconBtn
+                  title="Close chat"
+                  onClick={() => {
+                    if (onToggle) onToggle();
+                    else setIsOpen(false);
+                  }}
+                  disabled={false}
+                >
+                  <X size={14} />
                 </IconBtn>
               </div>
             </div>
