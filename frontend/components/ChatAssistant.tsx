@@ -335,9 +335,19 @@ export function ChatAssistant({ circuitContext, onLoadCircuit, isOpen: isOpenPro
       {/* Chat panel */}
       {isOpen && (
         <div
-          className="fixed right-0 top-0 h-full z-50 flex flex-col shadow-2
-xl"
-          style={{ width: '380px', background: 'var(--bg-2)', borderLeft: '1px solid var(--border-1)' }}
+          style={{
+            position: 'fixed',
+            right: 0,
+            top: 0,
+            height: '100%',
+            width: '380px',
+            zIndex: 50,
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '-4px 0 24px rgba(0,0,0,0.4)',
+            background: 'var(--bg-2)',
+            borderLeft: '1px solid var(--border-1)',
+          }}
         >
           {/* Header */}
           <div
