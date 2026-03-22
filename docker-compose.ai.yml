@@ -55,3 +55,8 @@ services:
 volumes:
   ollama_data:
     name: moriarty-ollama-data
+
+networks:
+  moriarty-network:
+    name: moriarty-network
+    external: true
