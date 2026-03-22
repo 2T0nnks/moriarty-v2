@@ -608,7 +608,8 @@ export default function AlgorithmModal({ isOpen, onClose, numQubits }: Algorithm
                                                     <XAxis dataKey="state" stroke="var(--text-3)" fontSize={9} tickLine={false} axisLine={false} angle={-45} textAnchor="end" height={50}/>
                                                     <YAxis stroke="var(--text-3)" fontSize={10} tickLine={false} axisLine={false} domain={[0, 'auto']}/>
                                                     <Tooltip contentStyle={{ backgroundColor:'var(--bg-3)', borderColor:'var(--border-1)', color:'var(--text-1)', fontSize:12 }}
-                                                        formatter={(value: any) => [typeof value === 'number' ? value.toFixed(6) : value, 'Probability']}/>
+                                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                        formatter={((value: unknown) => [typeof value === 'number' ? (value as number).toFixed(6) : String(value ?? ''), 'Probability']) as any}/>
                                                     <Bar dataKey="prob" radius={[4,4,0,0]}>
                                                         {probData.map((_, i) => <Cell key={i} fill={PROB_COLORS[i % PROB_COLORS.length]}/>)}
                                                     </Bar>
