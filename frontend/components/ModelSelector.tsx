@@ -4,9 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronDown, Download, CheckCircle, Loader2, AlertCircle, Cpu, X, Trash2 } from 'lucide-react';
 import { API_URL } from '../utils/api';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ModelInfo {
   id: string;
@@ -31,23 +29,19 @@ interface PullProgress {
 interface ModelSelectorProps {
   selectedModel: string;
   onModelChange: (modelId: string) => void;
-  apiBase?: string; // optional override; defaults to API_URL from api.ts
+  apiBase?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Tag badge colours
-// ---------------------------------------------------------------------------
+// ─── Tag config ───────────────────────────────────────────────────────────────
 
-const TAG_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  lightweight:      { bg: 'rgba(34,197,94,0.15)',  text: '#22c55e', label: 'Lightweight' },
-  recommended:      { bg: 'rgba(59,130,246,0.15)', text: '#60a5fa', label: 'Recommended' },
-  'best-reasoning': { bg: 'rgba(168,85,247,0.15)', text: '#c084fc', label: 'Best Reasoning' },
-  'code-specialist':{ bg: 'rgba(245,158,11,0.15)', text: '#f59e0b', label: 'Code Specialist' },
+const TAG: Record<string, { bg: string; color: string; label: string }> = {
+  'lightweight':      { bg: 'rgba(34,197,94,0.15)',  color: '#4ade80', label: 'Lightweight' },
+  'recommended':      { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa', label: 'Recommended' },
+  'best-reasoning':   { bg: 'rgba(168,85,247,0.15)', color: '#c084fc', label: 'Best Reasoning' },
+  'code-specialist':  { bg: 'rgba(245,158,11,0.15)', color: '#fbbf24', label: 'Code Specialist' },
 };
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   selectedModel,
@@ -63,10 +57,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const [pullError, setPullError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
-  // ── Fetch model list ──────────────────────────────────────────────────────
+  // ── Fetch models ─────────────────────────────────────────────────────────
+
   const fetchModels = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch(`${base}/chat/models`);
       if (res.ok) {
@@ -74,20 +70,19 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         setModels(data.models || []);
       }
     } catch {
-      // Ollama may not be running — silently ignore
+      // Ollama offline — silently ignore
     } finally {
       setLoading(false);
     }
-  }, [apiBase]);
+  }, [base]);
 
-  useEffect(() => {
-    fetchModels();
-  }, [fetchModels]);
+  useEffect(() => { fetchModels(); }, [fetchModels]);
 
-  // ── Close dropdown on outside click ──────────────────────────────────────
+  // ── Close on outside click ────────────────────────────────────────────────
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -95,59 +90,32 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── Pull (download) a model ───────────────────────────────────────────────
+  // ── Pull model ────────────────────────────────────────────────────────────
+
   const handlePull = useCallback(async (modelId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setPulling(modelId);
     setPullProgress({ status: 'Connecting…', completed: 0, total: 0, percent: 0, done: false });
     setPullError(null);
-
     try {
       const res = await fetch(`${base}/chat/models/pull`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model_id: modelId }),
       });
-
-      if (!res.ok || !res.body) {
-        setPullError(`Server error ${res.status}`);
-        setPulling(null);
-        return;
-      }
-
+      if (!res.ok || !res.body) { setPullError(`Server error ${res.status}`); setPulling(null); return; }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
-        const text = decoder.decode(value);
-        const lines = text.split('\n').filter(l => l.startsWith('data: '));
-
-        for (const line of lines) {
+        for (const line of decoder.decode(value).split('\n').filter(l => l.startsWith('data: '))) {
           try {
             const chunk: PullProgress = JSON.parse(line.slice(6));
             setPullProgress(chunk);
-
-            if (chunk.error) {
-              setPullError(chunk.error);
-              setPulling(null);
-              return;
-            }
-
-            if (chunk.done) {
-              setPulling(null);
-              setPullProgress(null);
-              // Refresh model list to update installed status
-              await fetchModels();
-              // Auto-select the newly installed model
-              onModelChange(modelId);
-              return;
-            }
-          } catch {
-            // Ignore malformed chunks
-          }
+            if (chunk.error) { setPullError(chunk.error); setPulling(null); return; }
+            if (chunk.done) { setPulling(null); setPullProgress(null); await fetchModels(); onModelChange(modelId); return; }
+          } catch { /* ignore */ }
         }
       }
     } catch (err: unknown) {
@@ -156,20 +124,18 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   }, [base, fetchModels, onModelChange]);
 
-  // ── Delete (remove) a model ─────────────────────────────────────────────
+  // ── Delete model ──────────────────────────────────────────────────────────
+
   const handleDelete = useCallback(async (modelId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setDeleteError(null);
     setDeleting(modelId);
     try {
-      const res = await fetch(`${base}/chat/models/${encodeURIComponent(modelId)}`, {
-        method: 'DELETE',
-      });
+      const res = await fetch(`${base}/chat/models/${encodeURIComponent(modelId)}`, { method: 'DELETE' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ detail: 'Unknown error' }));
         setDeleteError(body.detail || `Error ${res.status}`);
       } else {
-        // If the deleted model was selected, reset to default
         if (modelId === selectedModel) onModelChange('qwen2.5:1.5b');
         await fetchModels();
       }
@@ -180,54 +146,63 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   }, [base, fetchModels, selectedModel, onModelChange]);
 
-  // ── Current model info ────────────────────────────────────────────────────
   const currentModel = models.find(m => m.id === selectedModel);
   const displayName = currentModel?.name ?? selectedModel;
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
-    <div ref={dropdownRef} className="relative" style={{ zIndex: 50 }}>
-      {/* Trigger button */}
+    <div ref={wrapRef} style={{ position: 'relative', zIndex: 200 }}>
+
+      {/* ── Trigger ── */}
       <button
         onClick={() => setIsOpen(v => !v)}
+        title="Select AI model"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 4,
           padding: '4px 8px',
-          borderRadius: 5,
           background: 'transparent',
           border: 'none',
+          borderRadius: 5,
           color: '#555',
           cursor: 'pointer',
           fontSize: 11,
-          fontFamily: 'monospace',
-          transition: 'color 0.15s',
+          fontFamily: 'ui-monospace, monospace',
           whiteSpace: 'nowrap',
+          transition: 'color 0.15s',
         }}
-        title="Select AI model"
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#aaa'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#555'; }}
+        onMouseEnter={e => (e.currentTarget.style.color = '#aaa')}
+        onMouseLeave={e => (e.currentTarget.style.color = '#555')}
       >
         <Cpu size={12} style={{ color: '#f59e0b', flexShrink: 0 }} />
-        <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</span>
-        <ChevronDown size={11} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
+        <span style={{ maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</span>
+        <ChevronDown
+          size={11}
+          style={{
+            flexShrink: 0,
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s',
+          }}
+        />
       </button>
 
-      {/* Dropdown panel */}
+      {/* ── Dropdown ── */}
       {isOpen && (
         <div
           style={{
-            position: 'absolute',
-            left: 0,
-            top: 'calc(100% + 6px)',
+            position: 'fixed',
+            right: 0,
+            top: 44,
+            bottom: 0,
             width: 300,
-            overflow: 'hidden',
-            background: '#141414',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 10,
-            boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
-            zIndex: 100,
+            background: '#111',
+            borderLeft: '1px solid rgba(255,255,255,0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 300,
+            boxShadow: '-8px 0 32px rgba(0,0,0,0.6)',
           }}
         >
           {/* Header */}
@@ -236,44 +211,65 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '10px 14px',
+              padding: '12px 16px',
               borderBottom: '1px solid rgba(255,255,255,0.07)',
+              flexShrink: 0,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Cpu size={13} style={{ color: '#f59e0b' }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#ccc' }}>AI Model</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Cpu size={14} style={{ color: '#f59e0b' }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#ddd' }}>Select Model</span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: 2 }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#555',
+                cursor: 'pointer',
+                padding: 4,
+                display: 'flex',
+                alignItems: 'center',
+                borderRadius: 4,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#aaa')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#555')}
             >
-              <X size={13} />
+              <X size={14} />
             </button>
           </div>
 
-          {/* Pull progress bar */}
+          {/* Pull progress */}
           {pulling && pullProgress && (
-            <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-1)', background: 'var(--bg-3)' }}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-mono truncate max-w-[180px]" style={{ color: 'var(--amber)' }}>
+            <div
+              style={{
+                padding: '10px 16px',
+                borderBottom: '1px solid rgba(255,255,255,0.07)',
+                background: 'rgba(245,158,11,0.05)',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 10, color: '#f59e0b', fontFamily: 'monospace', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {pullProgress.status}
                 </span>
-                <span className="text-[10px] font-mono" style={{ color: 'var(--text-3)' }}>
+                <span style={{ fontSize: 10, color: '#555', fontFamily: 'monospace' }}>
                   {pullProgress.percent > 0 ? `${pullProgress.percent.toFixed(1)}%` : '…'}
                 </span>
               </div>
-              <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-1)' }}>
+              <div style={{ height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
                 <div
-                  className="h-full rounded-full transition-all duration-300"
                   style={{
+                    height: '100%',
                     width: `${pullProgress.percent}%`,
-                    background: 'linear-gradient(90deg, var(--amber), var(--blue))',
+                    background: 'linear-gradient(90deg, #f59e0b, #60a5fa)',
+                    borderRadius: 2,
+                    transition: 'width 0.3s',
                   }}
                 />
               </div>
               {pullProgress.total > 0 && (
-                <div className="text-[9px] mt-1" style={{ color: 'var(--text-3)' }}>
+                <div style={{ fontSize: 9, color: '#444', marginTop: 4, fontFamily: 'monospace' }}>
                   {(pullProgress.completed / 1e9).toFixed(2)} / {(pullProgress.total / 1e9).toFixed(2)} GB
                 </div>
               )}
@@ -282,43 +278,70 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
           {/* Pull error */}
           {pullError && (
-            <div className="px-4 py-2 flex items-center gap-2" style={{ background: 'color-mix(in srgb, var(--crimson) 10%, var(--bg-3))', borderBottom: '1px solid var(--border-1)' }}>
-              <AlertCircle size={12} style={{ color: 'var(--crimson)', flexShrink: 0 }} />
-              <span className="text-[10px]" style={{ color: 'var(--crimson)' }}>{pullError}</span>
-              <button onClick={() => setPullError(null)} className="ml-auto">
-                <X size={10} style={{ color: 'var(--crimson)' }} />
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 16px',
+                background: 'rgba(239,68,68,0.08)',
+                borderBottom: '1px solid rgba(239,68,68,0.15)',
+                flexShrink: 0,
+              }}
+            >
+              <AlertCircle size={12} style={{ color: '#f87171', flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: '#f87171', flex: 1 }}>{pullError}</span>
+              <button
+                onClick={() => setPullError(null)}
+                style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0 }}
+              >
+                <X size={11} />
               </button>
             </div>
           )}
 
           {/* Delete error */}
           {deleteError && (
-            <div className="px-4 py-2 flex items-center gap-2" style={{ background: 'color-mix(in srgb, var(--crimson) 10%, var(--bg-3))', borderBottom: '1px solid var(--border-1)' }}>
-              <AlertCircle size={12} style={{ color: 'var(--crimson)', flexShrink: 0 }} />
-              <span className="text-[10px]" style={{ color: 'var(--crimson)' }}>Remove failed: {deleteError}</span>
-              <button onClick={() => setDeleteError(null)} className="ml-auto">
-                <X size={10} style={{ color: 'var(--crimson)' }} />
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 16px',
+                background: 'rgba(239,68,68,0.08)',
+                borderBottom: '1px solid rgba(239,68,68,0.15)',
+                flexShrink: 0,
+              }}
+            >
+              <AlertCircle size={12} style={{ color: '#f87171', flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: '#f87171', flex: 1 }}>Remove failed: {deleteError}</span>
+              <button
+                onClick={() => setDeleteError(null)}
+                style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0 }}
+              >
+                <X size={11} />
               </button>
             </div>
           )}
 
           {/* Model list */}
-          <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
             {loading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '28px 0', gap: 8, color: '#555' }}>
-                <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '32px 0', color: '#444' }}>
+                <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
                 <span style={{ fontSize: 12 }}>Loading models…</span>
               </div>
             ) : models.length === 0 ? (
-              <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: 11, color: '#555' }}>
-                Could not reach Ollama. Make sure it is running.
+              <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+                <p style={{ fontSize: 12, color: '#555', margin: 0 }}>Could not reach Ollama.</p>
+                <p style={{ fontSize: 11, color: '#3a3a3a', margin: '4px 0 0' }}>Make sure the container is running.</p>
               </div>
             ) : (
-              models.map(model => {
+              models.map((model, idx) => {
                 const isSelected = model.id === selectedModel;
                 const isPulling = pulling === model.id;
                 const isDeleting = deleting === model.id;
-                const tag = TAG_STYLES[model.tag] ?? TAG_STYLES.recommended;
+                const tag = TAG[model.tag] ?? TAG['recommended'];
 
                 return (
                   <div
@@ -330,101 +353,122 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                       }
                     }}
                     style={{
-                      padding: '10px 14px',
+                      padding: '12px 16px',
                       cursor: model.installed && !isPulling ? 'pointer' : 'default',
-                      background: isSelected ? 'rgba(245,158,11,0.08)' : 'transparent',
-                      borderBottom: '1px solid rgba(255,255,255,0.05)',
+                      background: isSelected ? 'rgba(245,158,11,0.07)' : 'transparent',
+                      borderBottom: idx < models.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
                       transition: 'background 0.1s',
                     }}
                     onMouseEnter={e => {
-                      if (model.installed && !isPulling && !isSelected)
-                        (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)';
+                      if (!isSelected && model.installed && !isPulling)
+                        (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)';
                     }}
                     onMouseLeave={e => {
                       if (!isSelected)
                         (e.currentTarget as HTMLDivElement).style.background = 'transparent';
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                       {/* Left */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: isSelected ? '#f59e0b' : '#ddd' }}>
+                        {/* Name + badges */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 3 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? '#f59e0b' : '#ddd' }}>
                             {model.name}
                           </span>
                           <span
                             style={{
                               fontSize: 9,
-                              padding: '1px 6px',
-                              borderRadius: 10,
-                              fontWeight: 600,
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: 20,
                               background: tag.bg,
-                              color: tag.text,
+                              color: tag.color,
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.4,
                             }}
                           >
                             {tag.label}
                           </span>
                           {isSelected && (
-                            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 600 }}>
+                            <span
+                              style={{
+                                fontSize: 9,
+                                fontWeight: 700,
+                                padding: '2px 6px',
+                                borderRadius: 20,
+                                background: 'rgba(245,158,11,0.15)',
+                                color: '#f59e0b',
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.4,
+                              }}
+                            >
                               Active
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: 10, marginTop: 2, color: '#555', lineHeight: 1.4 }}>
+
+                        {/* Description */}
+                        <p style={{ fontSize: 11, color: '#555', margin: '0 0 5px', lineHeight: 1.4 }}>
                           {model.description}
-                        </div>
-                        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                          <span style={{ fontSize: 9, color: '#444' }}>by <strong style={{ color: '#555' }}>{model.creator}</strong></span>
-                          <span style={{ fontSize: 9, color: '#444' }}>~{model.size_gb} GB</span>
-                          <span style={{ fontSize: 9, color: '#444' }}>{model.ram_gb} GB RAM</span>
+                        </p>
+
+                        {/* Meta */}
+                        <div style={{ display: 'flex', gap: 12 }}>
+                          <span style={{ fontSize: 10, color: '#3a3a3a' }}>
+                            <span style={{ color: '#4a4a4a' }}>{model.creator}</span>
+                          </span>
+                          <span style={{ fontSize: 10, color: '#3a3a3a' }}>~{model.size_gb} GB</span>
+                          <span style={{ fontSize: 10, color: '#3a3a3a' }}>{model.ram_gb} GB RAM</span>
                         </div>
                       </div>
 
-                      {/* Right */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      {/* Right: action */}
+                      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                         {isDeleting ? (
-                          <Loader2 size={13} style={{ color: '#ef4444', animation: 'spin 1s linear infinite' }} />
+                          <Loader2 size={14} style={{ color: '#ef4444', animation: 'spin 1s linear infinite' }} />
                         ) : model.installed ? (
                           <>
-                            <CheckCircle size={13} style={{ color: '#22c55e' }} />
+                            <CheckCircle size={14} style={{ color: '#22c55e' }} />
                             <button
                               onClick={e => handleDelete(model.id, e)}
+                              title={`Remove ${model.name}`}
                               style={{
+                                display: 'flex',
+                                alignItems: 'center',
                                 padding: '3px 6px',
                                 borderRadius: 4,
                                 background: 'rgba(239,68,68,0.1)',
                                 border: '1px solid rgba(239,68,68,0.2)',
                                 color: '#f87171',
                                 cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
                               }}
-                              title={`Remove ${model.name}`}
                             >
-                              <Trash2 size={10} />
+                              <Trash2 size={11} />
                             </button>
                           </>
                         ) : isPulling ? (
-                          <Loader2 size={13} style={{ color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
+                          <Loader2 size={14} style={{ color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
                         ) : (
                           <button
                             onClick={e => handlePull(model.id, e)}
+                            title={`Download ${model.name} (~${model.size_gb} GB)`}
                             style={{
                               display: 'flex',
                               alignItems: 'center',
                               gap: 4,
-                              padding: '4px 8px',
+                              padding: '5px 10px',
                               borderRadius: 5,
-                              fontSize: 10,
-                              fontWeight: 600,
-                              background: 'rgba(245,158,11,0.12)',
-                              color: '#f59e0b',
+                              background: 'rgba(245,158,11,0.1)',
                               border: '1px solid rgba(245,158,11,0.25)',
+                              color: '#f59e0b',
                               cursor: 'pointer',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap',
                             }}
-                            title={`Download ${model.name} (~${model.size_gb} GB)`}
                           >
-                            <Download size={10} />
+                            <Download size={11} />
                             Install
                           </button>
                         )}
@@ -436,20 +480,23 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             )}
           </div>
 
-          {/* Footer note */}
+          {/* Footer */}
           <div
             style={{
-              padding: '8px 14px',
-              fontSize: 9,
-              color: '#3a3a3a',
+              padding: '8px 16px',
               borderTop: '1px solid rgba(255,255,255,0.05)',
-              lineHeight: 1.5,
+              fontSize: 10,
+              color: '#333',
+              flexShrink: 0,
             }}
           >
-            Models run locally via Ollama. Click <strong style={{ color: '#4a4a4a' }}>Install</strong> to download.
+            Models run locally via Ollama. Click <strong style={{ color: '#444' }}>Install</strong> to download.
           </div>
         </div>
       )}
+
+      {/* Spin keyframe */}
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
