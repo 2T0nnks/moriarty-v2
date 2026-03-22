@@ -134,134 +134,165 @@ export default function AllGatesModal({ isOpen, onClose }: AllGatesModalProps) {
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 z-50"
-        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1000,
+          backgroundColor: 'rgba(0,0,0,0.75)',
+        }}
         onClick={onClose}
       />
 
       {/* Modal */}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1001,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16,
+        }}
         onClick={onClose}
       >
         <div
-          className="max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl"
           style={{
-            backgroundColor: "var(--bg-1)",
-            border: "1px solid var(--border-1)",
+            maxWidth: 896,
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            borderRadius: 12,
+            boxShadow: '0 24px 64px rgba(0,0,0,0.8)',
+            backgroundColor: 'var(--bg-1)',
+            border: '1px solid var(--border-1)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div
-            className="sticky top-0 z-10 px-6 py-4 border-b flex items-center justify-between"
             style={{
-              backgroundColor: "var(--bg-1)",
-              borderColor: "var(--border-1)",
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+              padding: '16px 24px',
+              borderBottom: '1px solid var(--border-1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: 'var(--bg-1)',
             }}
           >
             <div>
               <h2
-                className="text-2xl font-bold"
-                style={{ color: "var(--text-1)" }}
+                style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}
               >
                 Quantum Gate Reference
               </h2>
               <p
-                className="text-sm mt-1"
-                style={{ color: "var(--text-2)" }}
+                style={{ fontSize: 13, marginTop: 4, color: 'var(--text-2)', margin: '4px 0 0' }}
               >
                 Complete guide to all available gates
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:opacity-80 transition-opacity"
               style={{
-                backgroundColor: "var(--bg-3)",
-                color: "var(--text-1)",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'var(--bg-3)',
+                border: 'none',
+                color: 'var(--text-1)',
+                cursor: 'pointer',
               }}
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
           {/* Content */}
-          <div className="px-6 py-4 space-y-6">
+          <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
             {allGates.map((category, idx) => (
               <div key={idx}>
                 <h3
-                  className="text-lg font-bold mb-3 pb-2 border-b"
                   style={{
-                    color: "var(--amber)",
-                    borderColor: "var(--border-1)",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: 'var(--amber)',
+                    margin: '0 0 12px',
+                    paddingBottom: 8,
+                    borderBottom: '1px solid var(--border-1)',
                   }}
                 >
                   {category.category}
                 </h3>
-                <div className="space-y-4">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {category.gates.map((gate, gateIdx) => (
                     <div
                       key={gateIdx}
-                      className="p-4 rounded-lg"
                       style={{
-                        backgroundColor: "var(--bg-2)",
-                        border: "1px solid var(--border-1)",
+                        padding: 16,
+                        borderRadius: 8,
+                        backgroundColor: 'var(--bg-2)',
+                        border: '1px solid var(--border-1)',
                       }}
                     >
-                      <div className="flex items-start gap-4">
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                         {/* Symbol */}
                         <div
-                          className="flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg"
                           style={{
-                            backgroundColor: "var(--bg-3)",
-                            color: "var(--amber)",
-                            border: "2px solid var(--amber)",
+                            flexShrink: 0,
+                            width: 48,
+                            height: 48,
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: 18,
+                            backgroundColor: 'var(--bg-3)',
+                            color: 'var(--amber)',
+                            border: '2px solid var(--amber)',
                           }}
                         >
                           {gate.symbol}
                         </div>
 
                         {/* Info */}
-                        <div className="flex-1">
+                        <div style={{ flex: 1 }}>
                           <div
-                            className="font-bold text-base mb-1"
-                            style={{ color: "var(--text-1)" }}
+                            style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, color: 'var(--text-1)' }}
                           >
                             {gate.name}
                           </div>
                           <div
-                            className="text-sm mb-2"
-                            style={{ color: "var(--text-2)" }}
+                            style={{ fontSize: 13, marginBottom: 8, color: 'var(--text-2)' }}
                           >
                             {gate.description}
                           </div>
                           <div
-                            className="text-xs font-mono p-2 rounded mb-2"
                             style={{
-                              backgroundColor: "var(--bg-3)",
-                              color: "var(--text-2)",
+                              fontSize: 12,
+                              fontFamily: 'monospace',
+                              padding: '6px 8px',
+                              borderRadius: 5,
+                              marginBottom: 8,
+                              backgroundColor: 'var(--bg-3)',
+                              color: 'var(--text-2)',
                             }}
                           >
                             {gate.formula}
                           </div>
                           <div
-                            className="text-xs italic"
-                            style={{ color: "var(--text-3)" }}
+                            style={{ fontSize: 12, fontStyle: 'italic', color: 'var(--text-3)' }}
                           >
-                            💡 {gate.usage}
+                            {gate.usage}
                           </div>
                         </div>
                       </div>
@@ -274,18 +305,26 @@ export default function AllGatesModal({ isOpen, onClose }: AllGatesModalProps) {
 
           {/* Footer */}
           <div
-            className="sticky bottom-0 px-6 py-4 border-t"
             style={{
-              backgroundColor: "var(--bg-1)",
-              borderColor: "var(--border-1)",
+              position: 'sticky',
+              bottom: 0,
+              padding: '12px 24px',
+              borderTop: '1px solid var(--border-1)',
+              backgroundColor: 'var(--bg-1)',
             }}
           >
             <button
               onClick={onClose}
-              className="w-full py-2 px-4 rounded-lg font-medium transition-all duration-200"
               style={{
-                backgroundColor: "var(--amber)",
-                color: "var(--text-inverse)",
+                width: '100%',
+                padding: '8px 16px',
+                borderRadius: 8,
+                fontWeight: 600,
+                fontSize: 14,
+                backgroundColor: 'var(--amber)',
+                color: '#000',
+                border: 'none',
+                cursor: 'pointer',
               }}
             >
               Close
