@@ -39,10 +39,10 @@ interface ModelSelectorProps {
 // ---------------------------------------------------------------------------
 
 const TAG_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  lightweight:      { bg: 'color-mix(in srgb, #22c55e 15%, transparent)', text: '#22c55e', label: 'Lightweight' },
-  recommended:      { bg: 'color-mix(in srgb, #3b82f6 15%, transparent)', text: '#3b82f6', label: 'Recommended' },
-  'best-reasoning': { bg: 'color-mix(in srgb, #a855f7 15%, transparent)', text: '#a855f7', label: 'Best Reasoning' },
-  'code-specialist':{ bg: 'color-mix(in srgb, #f59e0b 15%, transparent)', text: '#f59e0b', label: 'Code Specialist' },
+  lightweight:      { bg: 'rgba(34,197,94,0.15)',  text: '#22c55e', label: 'Lightweight' },
+  recommended:      { bg: 'rgba(59,130,246,0.15)', text: '#60a5fa', label: 'Recommended' },
+  'best-reasoning': { bg: 'rgba(168,85,247,0.15)', text: '#c084fc', label: 'Best Reasoning' },
+  'code-specialist':{ bg: 'rgba(245,158,11,0.15)', text: '#f59e0b', label: 'Code Specialist' },
 };
 
 // ---------------------------------------------------------------------------
@@ -217,12 +217,17 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       {/* Dropdown panel */}
       {isOpen && (
         <div
-          className="absolute right-0 top-full mt-1 w-80 overflow-hidden"
           style={{
+            position: 'absolute',
+            left: 0,
+            top: 'calc(100% + 6px)',
+            width: 300,
+            overflow: 'hidden',
             background: '#141414',
             border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 10,
             boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
+            zIndex: 100,
           }}
         >
           {/* Header */}
