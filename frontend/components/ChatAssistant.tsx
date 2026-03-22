@@ -402,39 +402,54 @@ export function ChatAssistant({
           {/* ── Top bar ──────────────────────────────────────────────────── */}
           <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
               padding: '0 12px',
-              height: 44,
               borderBottom: '1px solid rgba(255,255,255,0.07)',
               background: '#1a1a1a',
               flexShrink: 0,
             }}
           >
-            {/* Left */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  background: dotColor,
-                  flexShrink: 0,
-                  boxShadow: online ? `0 0 6px ${dotColor}` : 'none',
-                  transition: 'background 0.3s',
-                }}
-              />
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', letterSpacing: 0.2 }}>
-                Quantum AI
-              </span>
-              <span style={{ fontSize: 11, color: '#555', fontFamily: 'monospace' }}>
-                {selectedModel}
-              </span>
+            {/* Row 1: title + icon actions */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                height: 40,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: dotColor,
+                    flexShrink: 0,
+                    boxShadow: online ? `0 0 6px ${dotColor}` : 'none',
+                    transition: 'background 0.3s',
+                  }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', letterSpacing: 0.2 }}>
+                  Quantum AI
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <IconBtn title="Analyse circuit" onClick={analyseCircuit} disabled={isLoading}>
+                  <Search size={14} />
+                </IconBtn>
+                <IconBtn title="Clear chat" onClick={clearChat} disabled={isLoading}>
+                  <Trash2 size={14} />
+                </IconBtn>
+              </div>
             </div>
 
-            {/* Right: actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {/* Row 2: model selector */}
+            <div
+              style={{
+                paddingBottom: 8,
+                marginTop: -2,
+              }}
+            >
               <ModelSelector
                 selectedModel={selectedModel}
                 onModelChange={(id) => {
@@ -442,12 +457,6 @@ export function ChatAssistant({
                   setOllamaStatus(prev => prev ? { ...prev, models: [id] } : prev);
                 }}
               />
-              <IconBtn title="Analyse circuit" onClick={analyseCircuit} disabled={isLoading}>
-                <Search size={14} />
-              </IconBtn>
-              <IconBtn title="Clear chat" onClick={clearChat} disabled={isLoading}>
-                <Trash2 size={14} />
-              </IconBtn>
             </div>
           </div>
 
