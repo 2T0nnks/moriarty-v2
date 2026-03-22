@@ -1,0 +1,23 @@
+# ============================================================
+#  AMD GPU override (ROCm) — must be used together with docker-compose.ai.yml
+#
+#  Use with:
+#    docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.amd.yml up --build
+#
+#  Prerequisites (Linux only — ROCm is NOT supported on Windows WSL2):
+#    - AMD GPU: RDNA 2 (RX 6000) or newer recommended
+#    - ROCm drivers installed on the host
+#    See docs/install/gpu/README.md for full setup instructions
+#
+#  For AMD on Windows or older AMD GPUs, use docker-compose.vulkan.yml instead.
+# ============================================================
+
+services:
+  ollama:
+    image: ollama/ollama:rocm
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render

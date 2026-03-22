@@ -5,8 +5,9 @@
 > Precision quantum circuit design, simulation and analysis. A modern web platform for designing, simulating, optimizing, and debugging quantum circuits — with an optional AI Assistant, variational algorithms (VQE, QAOA), and multiple export options.
 
 [![Frontend](https://img.shields.io/badge/Frontend-Next.js%2016-b8c1ec?style=flat-square)](https://nextjs.org/)
-[![Quantum](https://img.shields.io/badge/Quantum-Qiskit%20(via%20API)-d4939d?style=flat-square)](https://qiskit.org/)
-[![AI](https://img.shields.io/badge/AI%20Model-GPT/Claude/Llama%20(via%20API)-ee9595?style=flat-square)](https://openai.com/)
+[![Backend](https://img.shields.io/badge/Backend-FastAPI%20+%20Qiskit-d4939d?style=flat-square)](https://qiskit.org/)
+[![AI](https://img.shields.io/badge/AI%20Model-Ollama%20(optional)-ee9595?style=flat-square)](https://ollama.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-b8c1ec?style=flat-square)](https://docs.docker.com/compose/)
 
 ---
 
@@ -15,48 +16,74 @@
 - **Intuitive Circuit Builder:** Drag-and-drop gates from the palette to the circuit board.
 - **Real-time Bloch Sphere:** Instantly visualize the state of each qubit as you build.
 - **Circuit Simulation:** Run simulations and see the state probabilities in a clear bar chart.
-- **AI Assistant:** Get help, ask questions, and generate circuits with natural language.
+- **AI Assistant:** Get help, ask questions, and generate circuits with natural language (requires AI mode).
 - **Model Selection:** Choose from a variety of AI models (GPT, Claude, Llama) for the assistant.
 - **Variational Algorithms:** Configure and run VQE and QAOA experiments.
 - **Circuit Optimizer:** Automatically optimize your circuit for better performance.
 - **Multiple Export Options:** Export your circuit to QASM, Qiskit, PL, Cirq, and Q#.
 - **Dark Theme:** A beautiful, eye-friendly dark theme with amber accents.
-- **Custom Favicon:** A unique, transparent quantum atom favicon.
 
 ---
 
-## 🚀 Getting Started
+## 🐳 Running with Docker
 
-This project is a Next.js frontend that connects to a separate backend API for quantum simulation and AI features. To run it locally, you need to have Node.js and pnpm installed.
+Docker is the recommended way to run Moriarty. Make sure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed.
 
-### Step 1: Clone the Repository
+See the prerequisites guide for your OS:
+[Linux](./docs/install/prerequisites/LINUX.md) · [macOS](./docs/install/prerequisites/MACOS.md) · [Windows](./docs/install/prerequisites/WINDOWS.md)
 
-```bash
-git clone https://github.com/2T0nnks/moriarty.git
-cd moriarty
-```
-
-### Step 2: Install Dependencies
+### Without AI (default)
 
 ```bash
-pnpm install
+docker-compose up --build
 ```
 
-### Step 3: Configure Environment
-
-Create a `.env.local` file in the root of the project and add the following environment variables:
-
-```env
-NEXT_PUBLIC_API_URL=http://your-backend-api-url
-```
-
-### Step 4: Run the Development Server
+### With AI — CPU only
 
 ```bash
-pnpm dev
+docker-compose -f docker-compose.yml -f docker-compose.ai.yml up --build
+```
+
+### With AI — NVIDIA GPU
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.nvidia.yml up --build
+```
+
+### With AI — AMD GPU (ROCm, Linux only, RDNA2+)
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.amd.yml up --build
+```
+
+### With AI — Vulkan (AMD/Intel/older GPUs, Linux)
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.vulkan.yml up --build
 ```
 
 Once started, the application will be available at **[http://localhost:3000](http://localhost:3000)**.
+
+---
+
+## 🚀 Running Locally (Development)
+
+To run the project locally without Docker, you need Node.js, pnpm, and Python 3.11+.
+
+### Frontend
+
+```bash
+pnpm install
+pnpm dev
+```
+
+### Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
 
 ---
 
@@ -69,10 +96,25 @@ Once started, the application will be available at **[http://localhost:3000](htt
 ├── hooks/            # Custom React hooks (useCircuit)
 ├── utils/            # Utility functions (api.ts, export.ts)
 ├── public/           # Static assets (favicon, images)
-├── .gitignore        # Files to ignore in git
-├── next.config.ts    # Next.js configuration
-├── package.json      # Project dependencies
-├── pnpm-lock.yaml    # Lockfile for pnpm
-├── tsconfig.json     # TypeScript configuration
+├── backend/          # FastAPI + Qiskit backend
+│   ├── algorithms/   # VQE, QAOA, Quantum Walk implementations
+│   ├── main.py       # API entrypoint
+│   ├── simulation.py # Circuit simulation (Qiskit Aer)
+│   ├── optimization.py  # Circuit optimization (Qiskit transpiler)
+│   ├── chat.py       # AI Assistant (Ollama streaming)
+│   ├── models.py     # Pydantic request/response models
+│   ├── requirements.txt
+│   └── Dockerfile
+├── docs/             # Documentation and install guides
+├── scripts/          # Convenience scripts for Linux and Windows
+│   ├── linux/        # setup.sh, start.sh, stop.sh, update.sh
+│   └── windows/      # setup.ps1, start.bat, stop.bat, update.bat
+├── docker-compose.yml         # Base: frontend + backend
+├── docker-compose.ai.yml      # Override: adds Ollama (CPU)
+├── docker-compose.nvidia.yml  # Override: NVIDIA GPU
+├── docker-compose.amd.yml     # Override: AMD GPU (ROCm)
+├── docker-compose.vulkan.yml  # Override: Vulkan (AMD/Intel)
+├── Dockerfile        # Frontend production build (multi-stage)
+├── .env.example      # Environment variable template
 └── README.md         # This file
 ```

@@ -1,0 +1,79 @@
+# ============================================================
+#  Moriarty — Quantum Circuit Debugger
+#  Docker Compose
+#
+#  Usage:
+#
+#  Without AI (default):
+#    docker-compose up --build
+#
+#  With AI — CPU only:
+#    docker-compose -f docker-compose.yml -f docker-compose.ai.yml up --build
+#
+#  With AI — NVIDIA GPU:
+#    docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.nvidia.yml up --build
+#
+#  With AI — AMD GPU (ROCm, Linux only, RDNA2+):
+#    docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.amd.yml up --build
+#
+#  With AI — Vulkan (AMD/Intel/older GPUs, Linux):
+#    docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.vulkan.yml up --build
+#
+#  Once started, the application will be available at:
+#    http://localhost:3000
+# ============================================================
+
+services:
+  # ── Backend (FastAPI + Qiskit) ───────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: moriarty-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - PYTHONUNBUFFERED=1
+      - ENABLE_AI=false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - moriarty-network
+
+  # ── Frontend (Next.js) ───────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://backend:8000
+    container_name: moriarty-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode < 400 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - moriarty-network
+
+networks:
+  moriarty-network:
+    name: moriarty-network
+    driver: bridge

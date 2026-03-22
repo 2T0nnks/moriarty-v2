@@ -1,0 +1,21 @@
+# ============================================================
+#  NVIDIA GPU override — must be used together with docker-compose.ai.yml
+#
+#  Use with:
+#    docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.nvidia.yml up --build
+#
+#  Prerequisites:
+#    - NVIDIA driver 525+ installed on the host
+#    - NVIDIA Container Toolkit installed
+#    See docs/install/gpu/README.md for full setup instructions
+# ============================================================
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

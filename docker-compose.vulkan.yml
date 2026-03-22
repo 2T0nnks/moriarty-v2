@@ -1,0 +1,25 @@
+# ============================================================
+#  Vulkan GPU override — must be used together with docker-compose.ai.yml
+#
+#  Use with:
+#    docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.vulkan.yml up --build
+#
+#  Suitable for (Linux only):
+#    - AMD GPUs not supported by ROCm (RX 400/500 series, RDNA 1)
+#    - Intel Arc GPUs
+#    - Any GPU with Vulkan 1.2+ support
+#
+#  Note: Vulkan support in Ollama is experimental.
+#  Performance is better than CPU but lower than ROCm or CUDA.
+#  See docs/install/gpu/README.md for full setup instructions.
+# ============================================================
+
+services:
+  ollama:
+    devices:
+      - /dev/dri
+    environment:
+      - OLLAMA_VULKAN=1
+    group_add:
+      - video
+      - render
