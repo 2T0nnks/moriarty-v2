@@ -15,11 +15,11 @@ start_ollama() {
     return
   fi
   info "Starting Ollama..."
-  ollama serve &>"$HOME/.quantum-debugger-ollama.log" &
+  ollama serve &>"$HOME/.moriarty-ollama.log" &
   local tries=0
   while ! curl -s http://localhost:11434/api/tags &>/dev/null; do
     sleep 1; tries=$((tries+1))
-    [ $tries -ge 15 ] && { warn "Ollama slow to start. Check $HOME/.quantum-debugger-ollama.log"; break; }
+    [ $tries -ge 15 ] && { warn "Ollama slow to start. Check $HOME/.moriarty-ollama.log"; break; }
   done
   success "Ollama started."
 }
@@ -31,12 +31,12 @@ start_backend() {
   fi
   info "Starting backend (FastAPI on :8000)..."
   pushd "$ROOT/backend" > /dev/null
-  nohup ./venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 >"$HOME/.quantum-debugger-backend.log" 2>&1 &
+  nohup ./venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 >"$HOME/.moriarty-backend.log" 2>&1 &
   popd > /dev/null
   local tries=0
   while ! curl -s http://localhost:8000/health &>/dev/null; do
     sleep 1; tries=$((tries+1))
-    [ $tries -ge 30 ] && { err "Backend failed to start. Check $HOME/.quantum-debugger-backend.log"; return 1; }
+    [ $tries -ge 30 ] && { err "Backend failed to start. Check $HOME/.moriarty-backend.log"; return 1; }
   done
   success "Backend is up."
 }
@@ -48,12 +48,12 @@ start_frontend() {
   fi
   info "Starting frontend (Next.js on :3000)..."
   pushd "$ROOT/frontend" > /dev/null
-  nohup pnpm dev >"$HOME/.quantum-debugger-frontend.log" 2>&1 &
+  nohup pnpm dev >"$HOME/.moriarty-frontend.log" 2>&1 &
   popd > /dev/null
   local tries=0
   while ! curl -s http://localhost:3000 &>/dev/null; do
     sleep 2; tries=$((tries+1))
-    [ $tries -ge 30 ] && { warn "Frontend still starting. Check $HOME/.quantum-debugger-frontend.log"; break; }
+    [ $tries -ge 30 ] && { warn "Frontend still starting. Check $HOME/.moriarty-frontend.log"; break; }
   done
   success "Frontend is up."
 }

@@ -11,6 +11,66 @@
 
 ---
 
+## 🚀 Instalação (Docker - Recomendado)
+
+Docker é o método padrão e recomendado. Ele garante um ambiente consistente e isolado, evitando conflitos de dependência.
+
+**Pré-requisitos:** Docker e Docker Compose precisam estar instalados e em execução. Se ainda não configurou, siga o guia passo a passo para a sua plataforma:
+
+| Plataforma | Guia de Pré-requisitos |
+|---|---|
+| **Windows** | [docs/install/prerequisites/WINDOWS.md](./docs/install/prerequisites/WINDOWS.md) |
+| **Linux** | [docs/install/prerequisites/LINUX.md](./docs/install/prerequisites/LINUX.md) |
+| **macOS** | [docs/install/prerequisites/MACOS.md](./docs/install/prerequisites/MACOS.md) |
+
+### Passo 1: Clone o Repositório
+
+```bash
+git clone https://github.com/2T0nnks/moriarty.git
+cd moriarty
+```
+
+### Passo 2: Escolha sua Configuração
+
+#### Opção 1: Padrão (Sem Assistente de IA)
+
+Executa a aplicação principal (construtor de circuitos, simulador, algoritmos) sem as funcionalidades de IA. O botão do Assistente de IA não aparecerá na interface.
+
+```bash
+docker-compose up --build
+```
+
+#### Opção 2: Com Assistente de IA (CPU)
+
+Adiciona o Assistente de IA, alimentado por um LLM local (Ollama). O modelo será baixado automaticamente na primeira execução (~3 GB).
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.ai.yml up --build
+```
+
+#### Opção 3: Com Assistente de IA (Aceleração por GPU)
+
+Para respostas de IA significativamente mais rápidas, use sua GPU. Isso requer configuração adicional.
+
+1.  **Siga o [Guia de Configuração de GPU](docs/install/gpu/README.md)** para preparar seu sistema.
+2.  Use o comando apropriado para o fabricante da sua GPU:
+    -   **NVIDIA (CUDA):**
+        ```bash
+        docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.nvidia.yml up --build
+        ```
+    -   **AMD (ROCm - Apenas Linux):**
+        ```bash
+        docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.amd.yml up --build
+        ```
+    -   **AMD/Intel (Vulkan - Apenas Linux):**
+        ```bash
+        docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.vulkan.yml up --build
+        ```
+
+Após iniciar, a aplicação estará disponível em **[http://localhost:3000](http://localhost:3000)**.
+
+---
+
 ## ✨ Funcionalidades
 
 - **Construtor de Circuitos Intuitivo:** Arraste e solte portas lógicas da paleta para o circuito.
@@ -25,96 +85,19 @@
 
 ---
 
-## 🐳 Executando com Docker
-
-Docker é a forma recomendada de executar o Moriarty. Certifique-se de ter o [Docker](https://docs.docker.com/get-docker/) e o [Docker Compose](https://docs.docker.com/compose/install/) instalados.
-
-Consulte o guia de pré-requisitos para o seu sistema:
-[Linux](./docs/install/prerequisites/LINUX.md) · [macOS](./docs/install/prerequisites/MACOS.md) · [Windows](./docs/install/prerequisites/WINDOWS.md)
-
-### Sem IA (padrão)
-
-```bash
-docker-compose up --build
-```
-
-### Com IA — apenas CPU
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.ai.yml up --build
-```
-
-### Com IA — GPU NVIDIA
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.nvidia.yml up --build
-```
-
-### Com IA — GPU AMD (ROCm, apenas Linux, RDNA2+)
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.amd.yml up --build
-```
-
-### Com IA — Vulkan (AMD/Intel/GPUs mais antigas, Linux)
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.ai.yml -f docker-compose.vulkan.yml up --build
-```
-
-Após iniciar, a aplicação estará disponível em **[http://localhost:3000](http://localhost:3000)**.
-
----
-
-## 🚀 Executando Localmente (Desenvolvimento)
-
-Para executar o projeto localmente sem Docker, você precisa do Node.js, pnpm e Python 3.11+.
-
-### Frontend
-
-```bash
-pnpm install
-pnpm dev
-```
-
-### Backend
-
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
----
-
 ## 📂 Estrutura do Repositório
 
 ```
 /moriarty
-├── app/              # Next.js App Router: layout, páginas, globals.css
-├── components/       # Componentes React (MoriartyShell, ChatAssistant, etc.)
-├── hooks/            # Hooks React personalizados (useCircuit)
-├── utils/            # Funções utilitárias (api.ts, export.ts)
-├── public/           # Arquivos estáticos (favicon, imagens)
+├── frontend/         # Next.js App Router: layout, páginas, componentes, etc.
 ├── backend/          # Backend FastAPI + Qiskit
-│   ├── algorithms/   # Implementações VQE, QAOA, Quantum Walk
-│   ├── main.py       # Entrypoint da API
-│   ├── simulation.py # Simulação de circuitos (Qiskit Aer)
-│   ├── optimization.py  # Otimização de circuitos (transpiler Qiskit)
-│   ├── chat.py       # Assistente de IA (Ollama streaming)
-│   ├── models.py     # Modelos Pydantic de request/response
-│   ├── requirements.txt
-│   └── Dockerfile
 ├── docs/             # Documentação e guias de instalação
 ├── scripts/          # Scripts de conveniência para Linux e Windows
-│   ├── linux/        # setup.sh, start.sh, stop.sh, update.sh
-│   └── windows/      # setup.ps1, start.bat, stop.bat, update.bat
 ├── docker-compose.yml         # Base: frontend + backend
 ├── docker-compose.ai.yml      # Override: adiciona Ollama (CPU)
 ├── docker-compose.nvidia.yml  # Override: GPU NVIDIA
 ├── docker-compose.amd.yml     # Override: GPU AMD (ROCm)
 ├── docker-compose.vulkan.yml  # Override: Vulkan (AMD/Intel)
-├── Dockerfile        # Build de produção do frontend (multi-stage)
 ├── .env.example      # Template de variáveis de ambiente
 └── README.md         # Este arquivo
 ```
