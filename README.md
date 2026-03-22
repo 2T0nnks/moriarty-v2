@@ -77,7 +77,7 @@ Once started, the application will be available at **[http://localhost:3000](htt
 - **Real-time Bloch Sphere:** Instantly visualize the state of each qubit as you build.
 - **Circuit Simulation:** Run simulations and see the state probabilities in a clear bar chart.
 - **AI Assistant:** Get help, ask questions, and generate circuits with natural language (requires AI mode).
-- **Model Selection:** Choose from a variety of AI models (GPT, Claude, Llama) for the assistant.
+- **Model Selection:** Choose from a variety of open-source models (Qwen, DeepSeek) for the assistant.
 - **Variational Algorithms:** Configure and run VQE and QAOA experiments.
 - **Circuit Optimizer:** Automatically optimize your circuit for better performance.
 - **Multiple Export Options:** Export your circuit to QASM, Qiskit, PL, Cirq, and Q#.

@@ -77,7 +77,7 @@ Após iniciar, a aplicação estará disponível em **[http://localhost:3000](ht
 - **Esfera de Bloch em Tempo Real:** Visualize instantaneamente o estado de cada qubit enquanto constrói.
 - **Simulação de Circuitos:** Execute simulações e veja as probabilidades de estado em um gráfico de barras claro.
 - **Assistente de IA:** Obtenha ajuda, faça perguntas e gere circuitos com linguagem natural (requer modo AI).
-- **Seleção de Modelos:** Escolha entre uma variedade de modelos de IA (GPT, Claude, Llama) para o assistente.
+- **Seleção de Modelos:** Escolha entre uma variedade de modelos de código aberto (Qwen, DeepSeek) para o assistente.
 - **Algoritmos Variacionais:** Configure e execute experimentos VQE e QAOA.
 - **Otimizador de Circuitos:** Otimize automaticamente seu circuito para melhor desempenho.
 - **Múltiplas Opções de Exportação:** Exporte seu circuito para QASM, Qiskit, PL, Cirq e Q#.
