@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Bot, User, Trash2, AlertCircle, Cpu, Zap, Search, Wifi, WifiOff, ChevronDown } from 'lucide-react';
+import {
+  Send, Loader2, Bot, Trash2, AlertCircle, Cpu, Zap, Search,
+  ChevronDown, WifiOff, RotateCcw, Atom,
+} from 'lucide-react';
 import { streamChatMessage, checkChatStatus, CircuitGrid } from '../utils/api';
 import { ModelSelector } from './ModelSelector';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   error?: boolean;
@@ -29,56 +30,80 @@ interface ChatAssistantProps {
     result?: { counts?: Record<string, number>; statevector?: number[][] } | null;
     warnings?: string[];
   };
-  onLoadCircuit?: (grid: Record<string, string>, params: Record<string, number[]>, numQubits: number, description?: string) => void;
+  onLoadCircuit?: (
+    grid: Record<string, string>,
+    params: Record<string, number[]>,
+    numQubits: number,
+    description?: string,
+  ) => void;
 }
 
-// ---------------------------------------------------------------------------
-// Helper: format markdown-like text
-// ---------------------------------------------------------------------------
+// ─── Markdown renderer ───────────────────────────────────────────────────────
 
-function FormattedMessage({ content, streaming }: { content: string; streaming?: boolean }) {
-  const cleanContent = content.replace(/```circuit[\s\S]*?```/g, '');
-  const parts = cleanContent.split(/(```[\s\S]*?```|`[^`]+`)/g);
+function Markdown({ text, streaming }: { text: string; streaming?: boolean }) {
+  // Strip circuit blocks — they render as a button
+  const clean = text.replace(/```circuit[\s\S]*?```/g, '').trim();
+
+  // Split on fenced code blocks and inline code
+  const segments = clean.split(/(```[\s\S]*?```|`[^`\n]+`)/g);
 
   return (
-    <div className="text-sm leading-relaxed">
-      {parts.map((part, i) => {
-        if (part.startsWith('```') && part.endsWith('```')) {
-          const code = part.slice(3, -3).replace(/^\w+\n/, '');
+    <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-1)' }}>
+      {segments.map((seg, i) => {
+        // Fenced code block
+        if (seg.startsWith('```') && seg.endsWith('```')) {
+          const body = seg.slice(3, -3).replace(/^\w+\n/, '');
           return (
             <pre
               key={i}
-              className="p-3 rounded-lg text-xs overflow-x-auto font-mono my-2"
-              style={{ background: 'var(--bg-0)', color: 'var(--amber)', border: '1px solid var(--border-1)' }}
+              style={{
+                margin: '8px 0',
+                padding: '10px 12px',
+                borderRadius: 6,
+                background: '#0d0d0d',
+                border: '1px solid rgba(255,255,255,0.08)',
+                fontSize: 12,
+                fontFamily: 'var(--font-mono, monospace)',
+                color: '#d4b896',
+                overflowX: 'auto',
+                whiteSpace: 'pre',
+              }}
             >
-              {code.trim()}
+              {body.trim()}
             </pre>
           );
         }
-        if (part.startsWith('`') && part.endsWith('`')) {
+        // Inline code
+        if (seg.startsWith('`') && seg.endsWith('`')) {
           return (
             <code
               key={i}
-              className="px-1.5 py-0.5 rounded font-mono text-xs"
-              style={{ background: 'var(--bg-0)', color: 'var(--amber)' }}
+              style={{
+                padding: '1px 5px',
+                borderRadius: 4,
+                background: 'rgba(255,255,255,0.07)',
+                fontFamily: 'var(--font-mono, monospace)',
+                fontSize: 12,
+                color: '#d4b896',
+              }}
             >
-              {part.slice(1, -1)}
+              {seg.slice(1, -1)}
             </code>
           );
         }
-        const lines = part.split('\n');
+        // Normal text — handle bold and line breaks
         return (
           <span key={i}>
-            {lines.map((line, j) => {
-              const boldParts = line.split(/(\*\*[^*]+\*\*)/g);
+            {seg.split('\n').map((line, j, arr) => {
+              const parts = line.split(/(\*\*[^*]+\*\*)/g);
               return (
                 <span key={j}>
-                  {boldParts.map((bp, k) =>
-                    bp.startsWith('**') && bp.endsWith('**')
-                      ? <strong key={k} style={{ color: 'var(--text-1)', fontWeight: 600 }}>{bp.slice(2, -2)}</strong>
-                      : <span key={k}>{bp}</span>
+                  {parts.map((p, k) =>
+                    p.startsWith('**') && p.endsWith('**')
+                      ? <strong key={k} style={{ fontWeight: 600 }}>{p.slice(2, -2)}</strong>
+                      : <span key={k}>{p}</span>
                   )}
-                  {j < lines.length - 1 && <br />}
+                  {j < arr.length - 1 && <br />}
                 </span>
               );
             })}
@@ -87,89 +112,95 @@ function FormattedMessage({ content, streaming }: { content: string; streaming?:
       })}
       {streaming && (
         <span
-          className="inline-block w-1.5 h-3.5 ml-0.5 align-middle animate-pulse rounded-sm"
-          style={{ background: 'var(--amber)' }}
+          style={{
+            display: 'inline-block',
+            width: 6,
+            height: 14,
+            marginLeft: 2,
+            verticalAlign: 'middle',
+            background: 'var(--amber)',
+            borderRadius: 2,
+            animation: 'pulse 1s ease-in-out infinite',
+          }}
         />
       )}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Suggested prompts
-// ---------------------------------------------------------------------------
+// ─── Typing indicator ────────────────────────────────────────────────────────
 
-const SUGGESTED_PROMPTS = [
-  { label: 'Bell state', prompt: 'Create a Bell state circuit' },
-  { label: 'GHZ state', prompt: 'Build a 3-qubit GHZ state' },
-  { label: 'Analyse circuit', prompt: 'Analyse the current circuit' },
-  { label: 'Entanglement', prompt: 'What is quantum entanglement?' },
-  { label: "Grover's", prompt: "Create a Grover's search circuit" },
-  { label: 'Teleportation', prompt: 'Show me a quantum teleportation circuit' },
-];
-
-// ---------------------------------------------------------------------------
-// Typing dots animation
-// ---------------------------------------------------------------------------
-
-function TypingDots() {
+function ThinkingDots() {
   return (
-    <div className="flex items-center gap-1 py-1">
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0' }}>
       {[0, 1, 2].map(i => (
         <span
           key={i}
-          className="w-1.5 h-1.5 rounded-full animate-bounce"
           style={{
+            width: 5,
+            height: 5,
+            borderRadius: '50%',
             background: 'var(--amber)',
-            opacity: 0.7,
-            animationDelay: `${i * 0.15}s`,
-            animationDuration: '0.8s',
+            opacity: 0.5,
+            animation: `bounce 1s ease-in-out ${i * 0.2}s infinite`,
           }}
         />
       ))}
+      <style>{`
+        @keyframes bounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+          40% { transform: translateY(-5px); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
+// ─── Quick prompts ───────────────────────────────────────────────────────────
 
-export function ChatAssistant({ circuitContext, onLoadCircuit, isOpen: isOpenProp, onToggle }: ChatAssistantProps) {
+const QUICK_PROMPTS = [
+  { label: 'Bell state', full: 'Create a Bell state circuit' },
+  { label: 'GHZ state', full: 'Build a 3-qubit GHZ state' },
+  { label: 'Analyse circuit', full: 'Analyse the current circuit' },
+  { label: 'Entanglement', full: 'Explain quantum entanglement' },
+  { label: "Grover's", full: "Create a Grover's search circuit" },
+  { label: 'Teleportation', full: 'Show me a quantum teleportation circuit' },
+];
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function ChatAssistant({
+  circuitContext,
+  onLoadCircuit,
+  isOpen: isOpenProp,
+  onToggle,
+}: ChatAssistantProps) {
   const [isOpenInternal, setIsOpenInternal] = useState(false);
   const isOpen = isOpenProp !== undefined ? isOpenProp : isOpenInternal;
-  const setIsOpen = (v: boolean | ((prev: boolean) => boolean)) => {
+  const setIsOpen = (v: boolean | ((p: boolean) => boolean)) => {
     const next = typeof v === 'function' ? v(isOpen) : v;
-    if (onToggle && next !== isOpen) { onToggle(); }
+    if (onToggle && next !== isOpen) onToggle();
     setIsOpenInternal(next);
   };
 
   const [selectedModel, setSelectedModel] = useState('qwen2.5:1.5b');
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: "Hello! I'm your **Quantum Computing Assistant**.\n\nI can **create circuits**, **analyse** your current setup, **explain concepts**, and **generate code** for Qiskit, PennyLane, Cirq, and Q#.\n\nTry: *\"Create a Bell state circuit\"* or *\"Analyse the current circuit\"*",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [ollamaStatus, setOllamaStatus] = useState<{ available: boolean; models: string[] } | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [loadingCircuitId, setLoadingCircuitId] = useState<string | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState(true);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const streamingMsgIdRef = useRef<string | null>(null);
+  const streamingIdRef = useRef<string | null>(null);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  // Auto-scroll
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
-
+  // Status polling
   useEffect(() => {
     if (!isOpen) return;
     const check = () => {
@@ -180,16 +211,16 @@ export function ChatAssistant({ circuitContext, onLoadCircuit, isOpen: isOpenPro
         .finally(() => setIsCheckingStatus(false));
     };
     if (ollamaStatus === null) check();
-    const interval = setInterval(() => {
-      if (!ollamaStatus?.available) check();
-    }, 10000);
-    return () => clearInterval(interval);
+    const id = setInterval(() => { if (!ollamaStatus?.available) check(); }, 10000);
+    return () => clearInterval(id);
   }, [isOpen, ollamaStatus]);
 
+  // Focus input on open
   useEffect(() => {
-    if (isOpen) setTimeout(() => inputRef.current?.focus(), 100);
+    if (isOpen) setTimeout(() => inputRef.current?.focus(), 80);
   }, [isOpen]);
 
+  // Load circuit into debugger
   const handleLoadCircuit = useCallback((msgId: string, circuit: CircuitGrid) => {
     if (!onLoadCircuit) return;
     setLoadingCircuitId(msgId);
@@ -201,32 +232,35 @@ export function ChatAssistant({ circuitContext, onLoadCircuit, isOpen: isOpenPro
     }
   }, [onLoadCircuit]);
 
-  const sendMessage = useCallback(async (text: string) => {
+  // Send message
+  const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isLoading) return;
 
-    setShowSuggestions(false);
-
     const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: `u-${Date.now()}`,
       role: 'user',
       content: trimmed,
       timestamp: new Date(),
     };
-
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
 
-    const history = messages
-      .filter(m => m.role !== 'system' && m.id !== 'welcome')
-      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+    // Reset textarea height
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+    }
 
-    const streamMsgId = `assistant-${Date.now()}`;
-    streamingMsgIdRef.current = streamMsgId;
+    const history = messages
+      .filter(m => m.role !== 'assistant' || !m.error)
+      .map(m => ({ role: m.role, content: m.content }));
+
+    const streamId = `a-${Date.now()}`;
+    streamingIdRef.current = streamId;
 
     setMessages(prev => [...prev, {
-      id: streamMsgId,
+      id: streamId,
       role: 'assistant',
       content: '',
       timestamp: new Date(),
@@ -239,36 +273,36 @@ export function ChatAssistant({ circuitContext, onLoadCircuit, isOpen: isOpenPro
       history,
       (token) => {
         setMessages(prev =>
-          prev.map(m => m.id === streamMsgId ? { ...m, content: m.content + token } : m)
+          prev.map(m => m.id === streamId ? { ...m, content: m.content + token } : m)
         );
       },
-      (fullResponse, model, circuit, requestedModel) => {
-        const fallbackNotice = (requestedModel && requestedModel !== model)
-          ? `> **Note:** Model \`${requestedModel}\` is not installed. Using \`${model}\` instead.\n\n`
+      (full, model, circuit, requestedModel) => {
+        const note = (requestedModel && requestedModel !== model)
+          ? `> **Note:** \`${requestedModel}\` not installed — using \`${model}\` instead.\n\n`
           : '';
         setMessages(prev =>
-          prev.map(m => m.id === streamMsgId
-            ? { ...m, content: fallbackNotice + fullResponse, streaming: false, circuit: circuit || null }
+          prev.map(m => m.id === streamId
+            ? { ...m, content: note + full, streaming: false, circuit: circuit || null }
             : m
           )
         );
         setOllamaStatus({ available: true, models: [model] });
         if (requestedModel && requestedModel !== model) setSelectedModel(model);
         setIsLoading(false);
-        streamingMsgIdRef.current = null;
+        streamingIdRef.current = null;
       },
-      (error) => {
-        const isOffline =
-          error.toLowerCase().includes('ollama') ||
-          error.toLowerCase().includes('connect') ||
-          error.toLowerCase().includes('econnrefused');
+      (err) => {
+        const offline =
+          err.toLowerCase().includes('ollama') ||
+          err.toLowerCase().includes('connect') ||
+          err.toLowerCase().includes('econnrefused');
         setMessages(prev =>
-          prev.map(m => m.id === streamMsgId
+          prev.map(m => m.id === streamId
             ? {
                 ...m,
-                content: isOffline
-                  ? `**AI Assistant unavailable**\n\nThe Ollama service is not responding. Wait 30–60 seconds for the container to start — the status indicator will turn green automatically.\n\n\`\`\`bash\ndocker-compose logs ollama\n\`\`\``
-                  : `**Error:** ${error}`,
+                content: offline
+                  ? `**AI offline.** The Ollama container is not responding.\n\nWait 30–60 s and try again — the indicator turns green when ready.\n\n\`\`\`bash\ndocker-compose logs ollama\n\`\`\``
+                  : `**Error:** ${err}`,
                 streaming: false,
                 error: true,
               }
@@ -277,138 +311,130 @@ export function ChatAssistant({ circuitContext, onLoadCircuit, isOpen: isOpenPro
         );
         setOllamaStatus({ available: false, models: [] });
         setIsLoading(false);
-        streamingMsgIdRef.current = null;
+        streamingIdRef.current = null;
       },
       circuitContext,
       selectedModel,
     );
   }, [messages, isLoading, circuitContext, selectedModel]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(input);
-    }
+  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
   };
 
-  const clearChat = () => {
-    setMessages([{
-      id: 'welcome',
-      role: 'assistant',
-      content: "Chat cleared. How can I help you with quantum computing?",
-      timestamp: new Date(),
-    }]);
-    setShowSuggestions(true);
-  };
+  const clearChat = () => setMessages([]);
 
   const analyseCircuit = () => {
-    const hasGates = circuitContext?.gates?.length ?? 0 > 0;
-    sendMessage(hasGates
-      ? "Please analyse the current circuit: describe what it does, identify any errors or issues, and suggest improvements."
-      : "The circuit is empty. Can you suggest a simple circuit to start with?"
+    const has = (circuitContext?.gates?.length ?? 0) > 0;
+    send(has
+      ? 'Analyse the current circuit: describe what it does, identify errors, and suggest improvements.'
+      : 'The circuit is empty. Suggest a simple circuit to start with.'
     );
   };
 
-  const hasUserMessages = messages.some(m => m.role === 'user');
+  // Derived state
+  const online = ollamaStatus?.available ?? false;
+  const checking = isCheckingStatus;
+  const hasMessages = messages.length > 0;
+  const hasUserMsg = messages.some(m => m.role === 'user');
 
-  // ---------------------------------------------------------------------------
-  // Status indicator
-  // ---------------------------------------------------------------------------
+  const dotColor = checking ? '#6b7280' : online ? '#22c55e' : '#ef4444';
 
-  const statusColor = isCheckingStatus
-    ? 'var(--text-3)'
-    : ollamaStatus?.available
-      ? '#22c55e'
-      : ollamaStatus === null
-        ? 'var(--text-3)'
-        : '#ef4444';
-
-  const statusLabel = isCheckingStatus
-    ? 'Checking…'
-    : ollamaStatus?.available
-      ? 'Online'
-      : 'Offline';
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <>
-      {/* Toggle button — only in uncontrolled mode */}
+      {/* Toggle button (uncontrolled mode only) */}
       {isOpenProp === undefined && (
         <button
-          onClick={() => setIsOpen(prev => !prev)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-semibold transition-all text-xs text-white relative"
-          style={{ background: isOpen ? 'var(--amber)' : 'color-mix(in srgb, var(--amber) 80%, transparent)' }}
-          title="AI Quantum Assistant"
+          onClick={() => setIsOpen(p => !p)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '5px 10px',
+            borderRadius: 6,
+            background: isOpen ? 'var(--amber)' : 'rgba(245,158,11,0.18)',
+            color: isOpen ? '#000' : 'var(--amber)',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 12,
+            fontWeight: 600,
+            position: 'relative',
+          }}
         >
-          <Bot size={14} />
-          <span className="hidden sm:inline">AI Chat</span>
+          <Atom size={14} />
+          <span>AI Chat</span>
           <span
-            className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2"
-            style={{ background: statusColor, borderColor: 'var(--bg-1)' }}
+            style={{
+              position: 'absolute',
+              top: -3,
+              right: -3,
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: dotColor,
+              border: '2px solid var(--bg-1)',
+            }}
           />
         </button>
       )}
 
-      {/* Chat panel */}
+      {/* Panel */}
       {isOpen && (
         <div
           style={{
             position: 'fixed',
             right: 0,
             top: 0,
-            height: '100%',
-            width: '360px',
+            bottom: 0,
+            width: 360,
             zIndex: 50,
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '-8px 0 32px rgba(0,0,0,0.5)',
-            background: 'var(--bg-1)',
-            borderLeft: '1px solid var(--border-1)',
+            background: '#141414',
+            borderLeft: '1px solid rgba(255,255,255,0.07)',
+            boxShadow: '-12px 0 40px rgba(0,0,0,0.6)',
+            fontFamily: 'inherit',
           }}
         >
-          {/* ── Header ─────────────────────────────────────────────────────── */}
+
+          {/* ── Top bar ──────────────────────────────────────────────────── */}
           <div
-            className="flex-shrink-0 flex items-center justify-between px-4 py-3"
             style={{
-              background: 'var(--bg-2)',
-              borderBottom: '1px solid var(--border-1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 12px',
+              height: 44,
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              background: '#1a1a1a',
+              flexShrink: 0,
             }}
           >
-            {/* Left: avatar + title + status */}
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: 'color-mix(in srgb, var(--amber) 20%, var(--bg-3))' }}
-              >
-                <Bot size={16} style={{ color: 'var(--amber)' }} />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-1)' }}>
-                    Quantum AI
-                  </span>
-                  <span
-                    className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
-                    style={{
-                      background: `color-mix(in srgb, ${statusColor} 15%, transparent)`,
-                      color: statusColor,
-                    }}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusColor }} />
-                    {statusLabel}
-                  </span>
-                </div>
-                <span className="text-xs truncate block" style={{ color: 'var(--text-3)' }}>
-                  {selectedModel}
-                </span>
-              </div>
+            {/* Left */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  background: dotColor,
+                  flexShrink: 0,
+                  boxShadow: online ? `0 0 6px ${dotColor}` : 'none',
+                  transition: 'background 0.3s',
+                }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', letterSpacing: 0.2 }}>
+                Quantum AI
+              </span>
+              <span style={{ fontSize: 11, color: '#555', fontFamily: 'monospace' }}>
+                {selectedModel}
+              </span>
             </div>
 
             {/* Right: actions */}
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <ModelSelector
                 selectedModel={selectedModel}
                 onModelChange={(id) => {
@@ -416,163 +442,127 @@ export function ChatAssistant({ circuitContext, onLoadCircuit, isOpen: isOpenPro
                   setOllamaStatus(prev => prev ? { ...prev, models: [id] } : prev);
                 }}
               />
-              <button
-                onClick={analyseCircuit}
-                disabled={isLoading}
-                className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:opacity-80"
-                style={{ color: 'var(--text-3)', background: 'var(--bg-3)' }}
-                title="Analyse current circuit"
-              >
+              <IconBtn title="Analyse circuit" onClick={analyseCircuit} disabled={isLoading}>
                 <Search size={14} />
-              </button>
-              <button
-                onClick={clearChat}
-                disabled={isLoading}
-                className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:opacity-80"
-                style={{ color: 'var(--text-3)', background: 'var(--bg-3)' }}
-                title="Clear chat"
-              >
+              </IconBtn>
+              <IconBtn title="Clear chat" onClick={clearChat} disabled={isLoading}>
                 <Trash2 size={14} />
-              </button>
+              </IconBtn>
             </div>
           </div>
 
-          {/* ── Circuit context badge ──────────────────────────────────────── */}
-          {circuitContext?.gates?.length ? (
+          {/* ── Circuit context strip ─────────────────────────────────── */}
+          {(circuitContext?.gates?.length ?? 0) > 0 && (
             <div
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-xs"
               style={{
-                background: circuitContext.error
-                  ? 'color-mix(in srgb, #ef4444 12%, var(--bg-2))'
-                  : 'color-mix(in srgb, var(--amber) 8%, var(--bg-2))',
-                borderBottom: '1px solid var(--border-1)',
-                color: circuitContext.error ? '#ef4444' : 'var(--amber)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                fontSize: 11,
+                color: circuitContext!.error ? '#f87171' : '#f59e0b',
+                background: circuitContext!.error
+                  ? 'rgba(239,68,68,0.07)'
+                  : 'rgba(245,158,11,0.07)',
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                flexShrink: 0,
               }}
             >
-              {circuitContext.error ? <AlertCircle size={12} /> : <Cpu size={12} />}
-              <span className="truncate">
-                {circuitContext.error
-                  ? `Error: ${circuitContext.error.slice(0, 50)}`
-                  : `${circuitContext.num_qubits} qubits · ${circuitContext.gates.length} gates`}
+              {circuitContext!.error ? <AlertCircle size={11} /> : <Cpu size={11} />}
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {circuitContext!.error
+                  ? `Error: ${circuitContext!.error.slice(0, 60)}`
+                  : `${circuitContext!.num_qubits} qubits · ${circuitContext!.gates.length} gates`}
               </span>
-              {circuitContext.result?.counts && (
-                <span className="ml-auto opacity-60 flex-shrink-0">
-                  {Object.keys(circuitContext.result.counts).length} states
+              {circuitContext!.result?.counts && (
+                <span style={{ color: '#6b7280', flexShrink: 0 }}>
+                  {Object.keys(circuitContext!.result.counts).length} states
                 </span>
               )}
             </div>
-          ) : null}
+          )}
 
-          {/* ── Messages ──────────────────────────────────────────────────── */}
-          <div className="flex-1 overflow-y-auto" style={{ padding: '12px 12px 0' }}>
-            <div className="space-y-3">
-              {messages.map(msg => (
-                <div
-                  key={msg.id}
-                  className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-                >
-                  {/* Avatar */}
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{
-                      background: msg.role === 'user'
-                        ? 'var(--amber)'
-                        : msg.error
-                          ? 'color-mix(in srgb, #ef4444 30%, var(--bg-3))'
-                          : 'color-mix(in srgb, var(--amber) 15%, var(--bg-3))',
-                    }}
-                  >
-                    {msg.role === 'user'
-                      ? <User size={13} color="white" />
-                      : msg.error
-                        ? <AlertCircle size={13} color="#ef4444" />
-                        : <Bot size={13} style={{ color: 'var(--amber)' }} />}
-                  </div>
+          {/* ── Messages ─────────────────────────────────────────────── */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '16px 0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0,
+            }}
+          >
+            {/* Empty state */}
+            {!hasMessages && (
+              <div
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 24px',
+                  gap: 12,
+                  color: '#444',
+                  textAlign: 'center',
+                }}
+              >
+                <Bot size={32} style={{ color: '#333' }} />
+                <p style={{ fontSize: 13, lineHeight: 1.6, color: '#555', margin: 0 }}>
+                  Ask me to create circuits, explain concepts, or analyse your current setup.
+                </p>
+              </div>
+            )}
 
-                  {/* Bubble */}
-                  <div className={`flex-1 min-w-0 ${msg.role === 'user' ? 'flex flex-col items-end' : ''}`}>
-                    <div
-                      className="rounded-xl px-3 py-2.5 inline-block max-w-full"
-                      style={{
-                        background: msg.role === 'user'
-                          ? 'var(--amber)'
-                          : msg.error
-                            ? 'color-mix(in srgb, #ef4444 10%, var(--bg-2))'
-                            : 'var(--bg-2)',
-                        color: msg.role === 'user' ? '#000' : 'var(--text-1)',
-                        border: msg.role === 'user'
-                          ? 'none'
-                          : msg.error
-                            ? '1px solid color-mix(in srgb, #ef4444 30%, transparent)'
-                            : '1px solid var(--border-1)',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      {msg.content === '' && msg.streaming ? (
-                        <TypingDots />
-                      ) : (
-                        <FormattedMessage content={msg.content} streaming={msg.streaming} />
-                      )}
-                    </div>
-
-                    {/* Load Circuit button */}
-                    {msg.circuit && onLoadCircuit && !msg.streaming && (
-                      <button
-                        onClick={() => handleLoadCircuit(msg.id, msg.circuit!)}
-                        disabled={loadingCircuitId === msg.id}
-                        className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold w-full justify-center transition-all"
-                        style={{
-                          background: loadingCircuitId === msg.id
-                            ? '#22c55e'
-                            : 'color-mix(in srgb, var(--amber) 15%, var(--bg-2))',
-                          color: loadingCircuitId === msg.id ? 'white' : 'var(--amber)',
-                          border: `1px solid ${loadingCircuitId === msg.id ? '#22c55e' : 'var(--amber)'}`,
-                        }}
-                      >
-                        {loadingCircuitId === msg.id ? (
-                          <><span>✓</span><span>Loaded!</span></>
-                        ) : (
-                          <><Zap size={12} /><span className="truncate">Load: {msg.circuit.description}</span></>
-                        )}
-                      </button>
-                    )}
-
-                    <span className="text-xs mt-1 block px-1" style={{ color: 'var(--text-3)', opacity: 0.6 }}>
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} className="h-2" />
-            </div>
+            {/* Message list */}
+            {messages.map((msg) => (
+              <MessageRow
+                key={msg.id}
+                msg={msg}
+                onLoadCircuit={onLoadCircuit ? handleLoadCircuit : undefined}
+                loadingCircuitId={loadingCircuitId}
+              />
+            ))}
+            <div ref={bottomRef} />
           </div>
 
-          {/* ── Suggested prompts ─────────────────────────────────────────── */}
-          {showSuggestions && !hasUserMessages && (
-            <div className="flex-shrink-0 px-3 pb-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium" style={{ color: 'var(--text-3)' }}>
-                  Quick actions
-                </span>
-                <button
-                  onClick={() => setShowSuggestions(false)}
-                  className="text-xs"
-                  style={{ color: 'var(--text-3)', opacity: 0.5 }}
-                >
-                  <ChevronDown size={12} />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {SUGGESTED_PROMPTS.map(({ label, prompt }) => (
+          {/* ── Quick prompts ─────────────────────────────────────────── */}
+          {!hasUserMsg && (
+            <div
+              style={{
+                padding: '0 12px 10px',
+                flexShrink: 0,
+                borderTop: hasMessages ? '1px solid rgba(255,255,255,0.05)' : 'none',
+              }}
+            >
+              {hasMessages && (
+                <p style={{ fontSize: 11, color: '#444', margin: '8px 0 6px' }}>Suggestions</p>
+              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {QUICK_PROMPTS.map(({ label, full }) => (
                   <button
                     key={label}
-                    onClick={() => sendMessage(prompt)}
+                    onClick={() => send(full)}
                     disabled={isLoading}
-                    className="text-xs px-2.5 py-2 rounded-lg text-left transition-all hover:opacity-80 truncate"
                     style={{
-                      background: 'var(--bg-2)',
-                      border: '1px solid var(--border-1)',
-                      color: 'var(--text-2)',
+                      padding: '4px 10px',
+                      borderRadius: 20,
+                      fontSize: 11,
+                      color: '#888',
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLButtonElement).style.color = '#d4b896';
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(245,158,11,0.4)';
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLButtonElement).style.color = '#888';
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.08)';
                     }}
                   >
                     {label}
@@ -582,86 +572,283 @@ export function ChatAssistant({ circuitContext, onLoadCircuit, isOpen: isOpenPro
             </div>
           )}
 
-          {/* ── Input area ────────────────────────────────────────────────── */}
+          {/* ── Input area ────────────────────────────────────────────── */}
           <div
-            className="flex-shrink-0 p-3"
             style={{
-              background: 'var(--bg-2)',
-              borderTop: '1px solid var(--border-1)',
+              flexShrink: 0,
+              padding: '10px 12px 12px',
+              borderTop: '1px solid rgba(255,255,255,0.07)',
+              background: '#1a1a1a',
             }}
           >
-            {/* Offline warning */}
-            {ollamaStatus !== null && !ollamaStatus.available && !isCheckingStatus && (
+            {/* Offline banner */}
+            {ollamaStatus !== null && !online && !checking && (
               <div
-                className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg mb-2"
                 style={{
-                  background: 'color-mix(in srgb, #ef4444 10%, var(--bg-3))',
-                  border: '1px solid color-mix(in srgb, #ef4444 25%, transparent)',
-                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.2)',
+                  color: '#f87171',
+                  fontSize: 11,
+                  marginBottom: 8,
                 }}
               >
-                <WifiOff size={12} />
-                <span>AI offline — retrying every 10s</span>
+                <WifiOff size={11} />
+                <span style={{ flex: 1 }}>AI offline — retrying every 10 s</span>
+                <button
+                  onClick={() => setOllamaStatus(null)}
+                  style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0 }}
+                  title="Retry now"
+                >
+                  <RotateCcw size={11} />
+                </button>
               </div>
             )}
 
+            {/* Input box */}
             <div
-              className="flex items-end gap-2 rounded-xl p-2"
               style={{
-                background: 'var(--bg-1)',
-                border: '1px solid var(--border-1)',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: '#0f0f0f',
+                overflow: 'hidden',
               }}
             >
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
+                onKeyDown={handleKey}
                 placeholder={
-                  isCheckingStatus
-                    ? 'Checking status…'
-                    : !ollamaStatus?.available
-                      ? 'Waiting for Ollama…'
-                      : 'Ask me anything…'
+                  checking ? 'Checking status…'
+                  : !online ? 'Waiting for Ollama…'
+                  : 'Ask anything…'
                 }
                 disabled={isLoading}
                 rows={1}
-                className="flex-1 resize-none bg-transparent outline-none text-sm py-1 px-1"
                 style={{
-                  color: 'var(--text-1)',
-                  maxHeight: '96px',
-                  minHeight: '24px',
-                  lineHeight: '1.5',
+                  resize: 'none',
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  padding: '10px 12px 4px',
+                  fontSize: 13,
+                  color: '#e5e5e5',
+                  lineHeight: 1.5,
+                  maxHeight: 120,
+                  fontFamily: 'inherit',
+                  caretColor: '#f59e0b',
                 }}
-                onInput={(e) => {
+                onInput={e => {
                   const el = e.currentTarget;
                   el.style.height = 'auto';
-                  el.style.height = Math.min(el.scrollHeight, 96) + 'px';
+                  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
                 }}
               />
-              <button
-                onClick={() => sendMessage(input)}
-                disabled={isLoading || !input.trim()}
-                className="w-8 h-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0"
+
+              {/* Bottom bar of input */}
+              <div
                 style={{
-                  background: isLoading || !input.trim()
-                    ? 'var(--bg-3)'
-                    : 'var(--amber)',
-                  color: isLoading || !input.trim() ? 'var(--text-3)' : '#000',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '4px 8px 6px',
                 }}
               >
-                {isLoading
-                  ? <Loader2 size={15} className="animate-spin" />
-                  : <Send size={15} />}
-              </button>
+                <span style={{ fontSize: 10, color: '#3a3a3a' }}>
+                  ↵ send · ⇧↵ newline
+                </span>
+                <button
+                  onClick={() => send(input)}
+                  disabled={isLoading || !input.trim()}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    background: isLoading || !input.trim()
+                      ? 'rgba(255,255,255,0.05)'
+                      : '#f59e0b',
+                    border: 'none',
+                    cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer',
+                    color: isLoading || !input.trim() ? '#444' : '#000',
+                    transition: 'all 0.15s',
+                    flexShrink: 0,
+                  }}
+                >
+                  {isLoading
+                    ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                    : <Send size={13} />}
+                </button>
+              </div>
             </div>
-            <p className="text-xs mt-1.5 text-center" style={{ color: 'var(--text-3)', opacity: 0.5 }}>
-              Enter to send · Shift+Enter for new line
-            </p>
           </div>
         </div>
       )}
     </>
+  );
+}
+
+// ─── Message row ─────────────────────────────────────────────────────────────
+
+function MessageRow({
+  msg,
+  onLoadCircuit,
+  loadingCircuitId,
+}: {
+  msg: ChatMessage;
+  onLoadCircuit?: (id: string, circuit: CircuitGrid) => void;
+  loadingCircuitId: string | null;
+}) {
+  const isUser = msg.role === 'user';
+
+  return (
+    <div
+      style={{
+        padding: '6px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: isUser ? 'flex-end' : 'flex-start',
+      }}
+    >
+      {/* Role label */}
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: 0.5,
+          color: isUser ? 'rgba(245,158,11,0.6)' : 'rgba(255,255,255,0.25)',
+          marginBottom: 4,
+          textTransform: 'uppercase',
+        }}
+      >
+        {isUser ? 'You' : 'Quantum AI'}
+      </span>
+
+      {/* Bubble */}
+      <div
+        style={{
+          maxWidth: '88%',
+          padding: isUser ? '8px 12px' : '10px 14px',
+          borderRadius: isUser ? '12px 12px 2px 12px' : '2px 12px 12px 12px',
+          background: isUser
+            ? 'rgba(245,158,11,0.14)'
+            : msg.error
+              ? 'rgba(239,68,68,0.08)'
+              : 'rgba(255,255,255,0.04)',
+          border: isUser
+            ? '1px solid rgba(245,158,11,0.25)'
+            : msg.error
+              ? '1px solid rgba(239,68,68,0.2)'
+              : '1px solid rgba(255,255,255,0.07)',
+          wordBreak: 'break-word',
+        }}
+      >
+        {msg.content === '' && msg.streaming
+          ? <ThinkingDots />
+          : <Markdown text={msg.content} streaming={msg.streaming} />}
+      </div>
+
+      {/* Load circuit button */}
+      {msg.circuit && onLoadCircuit && !msg.streaming && (
+        <button
+          onClick={() => onLoadCircuit(msg.id, msg.circuit!)}
+          disabled={loadingCircuitId === msg.id}
+          style={{
+            marginTop: 6,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            borderRadius: 6,
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: loadingCircuitId === msg.id ? 'default' : 'pointer',
+            background: loadingCircuitId === msg.id
+              ? 'rgba(34,197,94,0.15)'
+              : 'rgba(245,158,11,0.1)',
+            color: loadingCircuitId === msg.id ? '#22c55e' : '#f59e0b',
+            border: `1px solid ${loadingCircuitId === msg.id ? 'rgba(34,197,94,0.3)' : 'rgba(245,158,11,0.3)'}`,
+            maxWidth: '88%',
+            width: '100%',
+            justifyContent: 'center',
+            transition: 'all 0.15s',
+          }}
+        >
+          {loadingCircuitId === msg.id
+            ? <><span>✓</span><span>Loaded into debugger</span></>
+            : <><Zap size={12} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Load: {msg.circuit.description}</span></>}
+        </button>
+      )}
+
+      {/* Timestamp */}
+      <span
+        style={{
+          fontSize: 10,
+          color: '#333',
+          marginTop: 3,
+          paddingLeft: 2,
+          paddingRight: 2,
+        }}
+      >
+        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </span>
+    </div>
+  );
+}
+
+// ─── Icon button helper ───────────────────────────────────────────────────────
+
+function IconBtn({
+  children,
+  onClick,
+  disabled,
+  title,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  title?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      style={{
+        width: 28,
+        height: 28,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 5,
+        background: 'transparent',
+        border: 'none',
+        color: '#555',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: 'color 0.15s, background 0.15s',
+      }}
+      onMouseEnter={e => {
+        if (!disabled) {
+          (e.currentTarget as HTMLButtonElement).style.color = '#aaa';
+          (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)';
+        }
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLButtonElement).style.color = '#555';
+        (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+      }}
+    >
+      {children}
+    </button>
   );
 }
 

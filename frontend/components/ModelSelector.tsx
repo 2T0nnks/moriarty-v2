@@ -190,41 +190,60 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       {/* Trigger button */}
       <button
         onClick={() => setIsOpen(v => !v)}
-        className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors hover:opacity-80"
         style={{
-          background: 'var(--bg-3)',
-          color: 'var(--text-2)',
-          border: '1px solid var(--border-1)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '4px 8px',
+          borderRadius: 5,
+          background: 'transparent',
+          border: 'none',
+          color: '#555',
+          cursor: 'pointer',
+          fontSize: 11,
+          fontFamily: 'monospace',
+          transition: 'color 0.15s',
+          whiteSpace: 'nowrap',
         }}
         title="Select AI model"
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#aaa'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#555'; }}
       >
-        <Cpu size={15} style={{ color: 'var(--amber)' }} />
-        <span className="hidden sm:inline max-w-[140px] truncate">{displayName}</span>
-        <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <Cpu size={12} style={{ color: '#f59e0b', flexShrink: 0 }} />
+        <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</span>
+        <ChevronDown size={11} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
       </button>
 
       {/* Dropdown panel */}
       {isOpen && (
         <div
-          className="absolute right-0 top-full mt-1 w-80 rounded-xl shadow-2xl overflow-hidden"
+          className="absolute right-0 top-full mt-1 w-80 overflow-hidden"
           style={{
-            background: 'var(--bg-2)',
-            border: '1px solid var(--border-1)',
+            background: '#141414',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 10,
+            boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
           }}
         >
           {/* Header */}
           <div
-            className="flex items-center justify-between px-4 py-3"
-            style={{ borderBottom: '1px solid var(--border-1)' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+            }}
           >
-            <div className="flex items-center gap-2">
-              <Cpu size={14} style={{ color: 'var(--amber)' }} />
-              <span className="text-xs font-semibold" style={{ color: 'var(--text-2)' }}>
-                AI Model
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Cpu size={13} style={{ color: '#f59e0b' }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#ccc' }}>AI Model</span>
             </div>
-            <button onClick={() => setIsOpen(false)}>
-              <X size={14} style={{ color: 'var(--text-3)' }} />
+            <button
+              onClick={() => setIsOpen(false)}
+              style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: 2 }}
+            >
+              <X size={13} />
             </button>
           </div>
 
@@ -279,14 +298,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           )}
 
           {/* Model list */}
-          <div className="max-h-80 overflow-y-auto scrollbar-thin">
+          <div style={{ maxHeight: 320, overflowY: 'auto' }}>
             {loading ? (
-              <div className="flex items-center justify-center py-8 gap-2" style={{ color: 'var(--text-3)' }}>
-                <Loader2 size={16} className="animate-spin" />
-                <span className="text-xs">Loading models…</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '28px 0', gap: 8, color: '#555' }}>
+                <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                <span style={{ fontSize: 12 }}>Loading models…</span>
               </div>
             ) : models.length === 0 ? (
-              <div className="px-4 py-6 text-center text-xs" style={{ color: 'var(--text-3)' }}>
+              <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: 11, color: '#555' }}>
                 Could not reach Ollama. Make sure it is running.
               </div>
             ) : (
@@ -305,94 +324,102 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                         setIsOpen(false);
                       }
                     }}
-                    className="px-4 py-3 transition-colors"
                     style={{
+                      padding: '10px 14px',
                       cursor: model.installed && !isPulling ? 'pointer' : 'default',
-                      background: isSelected
-                        ? 'color-mix(in srgb, var(--amber) 10%, var(--bg-2))'
-                        : undefined,
-                      borderBottom: '1px solid var(--border-2)',
+                      background: isSelected ? 'rgba(245,158,11,0.08)' : 'transparent',
+                      borderBottom: '1px solid rgba(255,255,255,0.05)',
+                      transition: 'background 0.1s',
                     }}
                     onMouseEnter={e => {
-                      if (model.installed && !isPulling && !isSelected) {
-                        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-4)';
-                      }
+                      if (model.installed && !isPulling && !isSelected)
+                        (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)';
                     }}
                     onMouseLeave={e => {
-                      if (!isSelected) {
-                        (e.currentTarget as HTMLDivElement).style.background = '';
-                      }
+                      if (!isSelected)
+                        (e.currentTarget as HTMLDivElement).style.background = 'transparent';
                     }}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      {/* Left: name + description */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-semibold" style={{ color: isSelected ? 'var(--amber)' : 'var(--text-1)' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                      {/* Left */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: isSelected ? '#f59e0b' : '#ddd' }}>
                             {model.name}
                           </span>
                           <span
-                            className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
-                            style={{ background: tag.bg, color: tag.text }}
+                            style={{
+                              fontSize: 9,
+                              padding: '1px 6px',
+                              borderRadius: 10,
+                              fontWeight: 600,
+                              background: tag.bg,
+                              color: tag.text,
+                            }}
                           >
                             {tag.label}
                           </span>
                           {isSelected && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'color-mix(in srgb, var(--amber) 20%, transparent)', color: 'var(--amber)' }}>
+                            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 600 }}>
                               Active
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--text-3)' }}>
+                        <div style={{ fontSize: 10, marginTop: 2, color: '#555', lineHeight: 1.4 }}>
                           {model.description}
                         </div>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[9px]" style={{ color: 'var(--text-3)' }}>
-                            by <strong>{model.creator}</strong>
-                          </span>
-                          <span className="text-[9px]" style={{ color: 'var(--text-3)' }}>
-                            ~{model.size_gb} GB download
-                          </span>
-                          <span className="text-[9px]" style={{ color: 'var(--text-3)' }}>
-                            {model.ram_gb} GB RAM
-                          </span>
+                        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                          <span style={{ fontSize: 9, color: '#444' }}>by <strong style={{ color: '#555' }}>{model.creator}</strong></span>
+                          <span style={{ fontSize: 9, color: '#444' }}>~{model.size_gb} GB</span>
+                          <span style={{ fontSize: 9, color: '#444' }}>{model.ram_gb} GB RAM</span>
                         </div>
                       </div>
 
-                      {/* Right: status / action */}
-                      <div className="flex-none flex items-center gap-1.5">
+                      {/* Right */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         {isDeleting ? (
-                          <Loader2 size={14} className="animate-spin" style={{ color: '#ef4444' }} />
+                          <Loader2 size={13} style={{ color: '#ef4444', animation: 'spin 1s linear infinite' }} />
                         ) : model.installed ? (
                           <>
-                            <CheckCircle size={14} style={{ color: 'var(--emerald)' }} />
+                            <CheckCircle size={13} style={{ color: '#22c55e' }} />
                             <button
                               onClick={e => handleDelete(model.id, e)}
-                              className="p-1 rounded transition-colors hover:opacity-80"
                               style={{
-                                color: '#ef4444',
-                                background: 'color-mix(in srgb, #ef4444 12%, var(--bg-3))',
-                                border: '1px solid color-mix(in srgb, #ef4444 25%, transparent)',
+                                padding: '3px 6px',
+                                borderRadius: 4,
+                                background: 'rgba(239,68,68,0.1)',
+                                border: '1px solid rgba(239,68,68,0.2)',
+                                color: '#f87171',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
                               }}
-                              title={`Remove ${model.name} from disk`}
+                              title={`Remove ${model.name}`}
                             >
-                              <Trash2 size={11} />
+                              <Trash2 size={10} />
                             </button>
                           </>
                         ) : isPulling ? (
-                          <Loader2 size={14} className="animate-spin" style={{ color: 'var(--amber)' }} />
+                          <Loader2 size={13} style={{ color: '#f59e0b', animation: 'spin 1s linear infinite' }} />
                         ) : (
                           <button
                             onClick={e => handlePull(model.id, e)}
-                            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors hover:opacity-80"
                             style={{
-                              background: 'color-mix(in srgb, var(--amber) 15%, var(--bg-3))',
-                              color: 'var(--amber)',
-                              border: '1px solid color-mix(in srgb, var(--amber) 30%, transparent)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '4px 8px',
+                              borderRadius: 5,
+                              fontSize: 10,
+                              fontWeight: 600,
+                              background: 'rgba(245,158,11,0.12)',
+                              color: '#f59e0b',
+                              border: '1px solid rgba(245,158,11,0.25)',
+                              cursor: 'pointer',
                             }}
                             title={`Download ${model.name} (~${model.size_gb} GB)`}
                           >
-                            <Download size={11} />
+                            <Download size={10} />
                             Install
                           </button>
                         )}
@@ -406,10 +433,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
           {/* Footer note */}
           <div
-            className="px-4 py-2 text-[9px] leading-relaxed"
-            style={{ borderTop: '1px solid var(--border-1)', color: 'var(--text-3)', background: 'var(--bg-3)' }}
+            style={{
+              padding: '8px 14px',
+              fontSize: 9,
+              color: '#3a3a3a',
+              borderTop: '1px solid rgba(255,255,255,0.05)',
+              lineHeight: 1.5,
+            }}
           >
-            Models run locally via Ollama. Click <strong>Install</strong> to download. Larger models require more RAM but generate better circuits.
+            Models run locally via Ollama. Click <strong style={{ color: '#4a4a4a' }}>Install</strong> to download.
           </div>
         </div>
       )}
