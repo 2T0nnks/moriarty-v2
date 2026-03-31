@@ -121,7 +121,13 @@ export default function MoriartyShell() {
   const [execError, setExecError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 
-  // ── Use new extracted hooks ────────────────────────────────────────────────
+  // ── Build gate list helper ────────────────────────────────────────────────
+  const getGates = useCallback(
+    () => buildGateList(circuit, gateParams, numQubits),
+    [circuit, gateParams, numQubits],
+  );
+
+  // ── Use new extracted hooks (must be after getGates) ─────────────────────
   const gates = getGates();
   const { images: blochImages, isLoading: isBlochLoading } = useBlochSphere(
     gates,
@@ -140,33 +146,9 @@ export default function MoriartyShell() {
   const [exportFmt, setExportFmt] = useState<ExportFmt>('qasm');
   const [exportCode, setExportCode] = useState('');
 
-  // ── AI state ─────────────────────────────────────────────────────────────
-  const [aiEnabled, setAiEnabled] = useState(false);
-
-  // ── Fetch config on mount ─────────────────────────────────────────────────
-  useEffect(() => {
-    fetchConfig().then(cfg => setAiEnabled(cfg.ai_enabled)).catch(() => setAiEnabled(false));
-  }, []);
-
   // ── Gate counts ───────────────────────────────────────────────────────────
   const gateCount = Object.keys(circuit).length;
   const depth = numSteps;
-
-  // ── Build gate list helper ────────────────────────────────────────────────
-  const getGates = useCallback(
-    () => buildGateList(circuit, gateParams, numQubits),
-    [circuit, gateParams, numQubits],
-  );
-
-  // ── Use new extracted hooks (must be after getGates) ─────────────────────
-  const gates = getGates();
-  const { images: blochImages, isLoading: isBlochLoading } = useBlochSphere(
-    gates,
-    numQubits,
-    { debounceMs: 500 }
-  );
-  const { enabled: aiEnabled } = useAIConfig();
-  const { copied, copy: handleCopy } = useClipboard(1800);
 
   // ── DnD sensors (require 8px movement before activating drag) ─────────────
   const sensors = useSensors(
