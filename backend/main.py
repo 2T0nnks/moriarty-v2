@@ -45,6 +45,9 @@ from algorithms.vqe import build_vqe_ansatz
 
 import traceback
 import os
+import re
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
 
 # ---------------------------------------------------------------------------
 # Application setup
@@ -56,14 +59,68 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Allow cross-origin requests from the Next.js frontend during development
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ---------------------------------------------------------------------------
+# CORS — smart origin policy
+#
+# Allowed by default (no configuration needed):
+#   • Any localhost / 127.0.0.1 origin on any port  (local development)
+#
+# To allow additional origins in production, set the CORS_ORIGINS env var:
+#   CORS_ORIGINS=https://myapp.example.com,https://other.example.com
+# ---------------------------------------------------------------------------
+
+_TRUSTED_PATTERNS = [
+    re.compile(r"^https?://localhost(:\d+)?$"),
+    re.compile(r"^https?://127\.0\.0\.1(:\d+)?$"),
+]
+
+_extra_origins: list[str] = [
+    o.strip()
+    for o in os.getenv("CORS_ORIGINS", "").split(",")
+    if o.strip()
+]
+
+
+def _is_allowed_origin(origin: str) -> bool:
+    if origin in _extra_origins:
+        return True
+    return any(p.match(origin) for p in _TRUSTED_PATTERNS)
+
+
+class SmartCORSMiddleware(BaseHTTPMiddleware):
+    """Dynamic CORS middleware that validates origins at request time."""
+
+    async def dispatch(self, request: StarletteRequest, call_next):
+        origin = request.headers.get("origin", "")
+        allowed = _is_allowed_origin(origin) if origin else False
+
+        # Handle pre-flight OPTIONS requests
+        if request.method == "OPTIONS" and origin:
+            if allowed:
+                from starlette.responses import Response
+                return Response(
+                    status_code=204,
+                    headers={
+                        "Access-Control-Allow-Origin": origin,
+                        "Access-Control-Allow-Credentials": "true",
+                        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                        "Access-Control-Allow-Headers": "*",
+                        "Access-Control-Max-Age": "600",
+                    },
+                )
+
+        response = await call_next(request)
+
+        if origin and allowed:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+
+        return response
+
+
+app.add_middleware(SmartCORSMiddleware)
 
 
 # ---------------------------------------------------------------------------

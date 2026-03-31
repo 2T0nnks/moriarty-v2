@@ -123,6 +123,25 @@ def build_circuit(num_qubits: int, gates: List[Dict[str, Any]]) -> QuantumCircui
         elif name == "M":
             qc.measure_all()
 
+        # --- Custom Unitary -----------------------------------------------
+        elif name == "UNITARY" and params:
+            # params is a flattened list of [re, im, re, im, ...]
+            # For 2x2 (1 qubit), params has 8 items (4 complex numbers)
+            # For 4x4 (2 qubits), params has 32 items (16 complex numbers)
+            try:
+                from qiskit.extensions import UnitaryGate
+                complex_params = [
+                    complex(params[i], params[i+1]) 
+                    for i in range(0, len(params), 2)
+                ]
+                dim = int(np.sqrt(len(complex_params)))
+                matrix = np.array(complex_params).reshape((dim, dim))
+                
+                gate = UnitaryGate(matrix, label="U")
+                qc.append(gate, qubits)
+            except Exception as e:
+                print(f"Failed to create UNITARY gate: {e}")
+
         # Unknown gates are silently skipped (logged in production)
 
     return qc

@@ -3,15 +3,16 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import {
   Undo2, Redo2, Trash2, Plus, Minus, ChevronLeft, ChevronRight,
-  Play, Zap, BookOpen, Bot, Download, Copy, Check,
+  Zap, BookOpen, Bot, Download, Copy, Check,
   BarChart2, Cpu, GitBranch, Terminal, Save, Upload,
   ChevronDown, ChevronUp, Layers, Activity, AlertCircle,
-  Loader2, X, PanelRightClose, PanelRightOpen,
+  Loader2, X, PanelRightClose, PanelRightOpen, Wand2,
 } from 'lucide-react';
 import { CircuitCell } from './CircuitCell';
 import { Gate } from './Gate';
 import AlgorithmModal from './AlgorithmModal';
 import AllGatesModal from './AllGatesModal';
+import MakeGateModal from './MakeGateModal';
 import { ExecutionResults } from './ExecutionResults';
 import { ChatAssistant } from './ChatAssistant';
 import { useCircuit } from '../hooks/useCircuit';
@@ -36,7 +37,15 @@ const GATE_GROUPS = [
   },
   {
     label: 'Multi-Qubit',
-    gates: ['•', '⊕', 'SWAP'],
+    gates: ['SWAP'],
+  },
+  {
+    label: 'Controlled',
+    gates: ['CX', 'CY', 'CZ', 'CH'],
+  },
+  {
+    label: 'Advanced',
+    gates: ['CCX', 'CSWAP', 'CRX', 'CRY', 'CRZ', 'CP'],
   },
   {
     label: 'Measure',
@@ -49,9 +58,14 @@ const GATE_DESCRIPTIONS: Record<string, string> = {
   Y: 'Pauli-Y — bit+phase flip', Z: 'Pauli-Z — phase flip',
   S: 'S — √Z (π/2 phase)', T: 'T — ⁴√Z (π/4 phase)',
   RX: 'RX — X-axis rotation', RY: 'RY — Y-axis rotation',
-  RZ: 'RZ — Z-axis rotation', '•': 'Control qubit',
-  '⊕': 'Target qubit', SWAP: 'SWAP two qubits',
+  RZ: 'RZ — Z-axis rotation', SWAP: 'SWAP two qubits',
   M: 'Measurement',
+  CX: 'Controlled-X (CNOT)', CY: 'Controlled-Y',
+  CZ: 'Controlled-Z', CH: 'Controlled-Hadamard',
+  CCX: 'Toffoli (double-controlled X)', CSWAP: 'Fredkin (controlled SWAP)',
+  CRX: 'Controlled RX(θ)', CRY: 'Controlled RY(θ)',
+  CRZ: 'Controlled RZ(θ)', CP: 'Controlled Phase(θ)',
+  UNITARY: 'Custom unitary gate',
 };
 
 // ─── Export formats ───────────────────────────────────────────────────────────
@@ -96,6 +110,10 @@ export default function MoriartyShell() {
   const [chatOpen, setChatOpen] = useState(false);
   const [isAlgoOpen, setIsAlgoOpen] = useState(false);
   const [isAllGatesOpen, setIsAllGatesOpen] = useState(false);
+  const [isMakeGateOpen, setIsMakeGateOpen] = useState(false);
+
+  // ── Custom gates state ────────────────────────────────────────────────────
+  const [customGates, setCustomGates] = useState<Record<string, number[]>>({});
 
   // ── Execution state ───────────────────────────────────────────────────────
   const [execResult, setExecResult] = useState<ExecutionResult | null>(null);
@@ -186,15 +204,31 @@ export default function MoriartyShell() {
     const gateName = String(active.data.current?.name ?? active.id);
     const cellId = String(over.id);
     if (circuit[cellId]) return;
-    addGate(cellId, gateName);
-  }, [circuit, addGate]);
+    
+    // Check if this is a custom gate and add its params
+    if (customGates[gateName]) {
+      addGate(cellId, 'UNITARY');
+      // Need to update params for this cell after adding
+      setTimeout(() => updateGateParams(cellId, customGates[gateName]), 0);
+    } else {
+      addGate(cellId, gateName);
+    }
+  }, [circuit, addGate, customGates, updateGateParams]);
 
   // ── Cell click (click-to-place) ───────────────────────────────────────────
   const handleCellClick = useCallback((cellId: string) => {
     if (!selectedGate) return;
     if (circuit[cellId]) return;
-    addGate(cellId, selectedGate);
-  }, [selectedGate, circuit, addGate]);
+    
+    // Check if this is a custom gate and add its params
+    if (customGates[selectedGate]) {
+      addGate(cellId, 'UNITARY');
+      // Need to update params for this cell after adding
+      setTimeout(() => updateGateParams(cellId, customGates[selectedGate]), 0);
+    } else {
+      addGate(cellId, selectedGate);
+    }
+  }, [selectedGate, circuit, addGate, customGates, updateGateParams]);
 
   // ── Run ───────────────────────────────────────────────────────────────────────
   const handleRun = useCallback(async () => {
@@ -379,6 +413,15 @@ export default function MoriartyShell() {
 
             <button
               className="m-btn m-btn-ghost"
+              data-tip="Make custom gate"
+              onClick={() => setIsMakeGateOpen(true)}
+            >
+              <Wand2 size={13} />
+              <span>Make Gate</span>
+            </button>
+
+            <button
+              className="m-btn m-btn-ghost"
               data-tip="Export circuit"
               onClick={() => { setBottomTab('export'); setBottomOpen(true); }}
             >
@@ -441,18 +484,6 @@ export default function MoriartyShell() {
               onClick={() => setPanelCollapsed(v => !v)}
             >
               {panelCollapsed ? <PanelRightOpen size={14} /> : <PanelRightClose size={14} />}
-            </button>
-
-            <div className="m-sep" />
-
-            <button
-              className="m-btn m-btn-emerald"
-              onClick={handleRun}
-              disabled={isRunning || gateCount === 0}
-            >
-              {isRunning
-                ? <><Loader2 size={13} className="m-spin" /> Running…</>
-                : <><Play size={13} /> Run</>}
             </button>
           </div>
         </header>
@@ -529,6 +560,50 @@ export default function MoriartyShell() {
                 >
                   <Layers size={12} />
                   All Gates
+                </button>
+              )}
+
+              {/* Custom Gates Section */}
+              {!sidebarCollapsed && Object.keys(customGates).length > 0 && (
+                <div style={{ marginTop: 12, marginBottom: 12 }}>
+                  <div className="m-label" style={{ padding: '4px 4px 6px' }}>
+                    Custom
+                  </div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: 4,
+                    }}
+                  >
+                    {Object.keys(customGates).map(name => (
+                      <div
+                        key={name}
+                        data-tip={`Custom ${name} gate`}
+                        style={{ display: 'flex', justifyContent: 'center' }}
+                      >
+                        <Gate
+                          id={`palette-${name}`}
+                          name={name}
+                          isSelected={selectedGate === name}
+                          onClick={() => setSelectedGate(prev => prev === name ? null : name)}
+                          className={`m-gate${selectedGate === name ? ' selected' : ''}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Make Gate Button */}
+              {!sidebarCollapsed && (
+                <button
+                  className="m-btn m-btn-outline"
+                  style={{ width: '100%', marginTop: 4 }}
+                  onClick={() => setIsMakeGateOpen(true)}
+                >
+                  <Wand2 size={12} />
+                  Make Gate
                 </button>
               )}
             </div>
@@ -683,9 +758,9 @@ export default function MoriartyShell() {
                     <ExecutionResults result={execResult} error={execError} isRunning={isRunning} />
                     {!execResult && !isRunning && !execError && (
                       <div className="m-empty">
-                        <div className="m-empty-icon"><Play size={18} /></div>
+                        <div className="m-empty-icon"><BarChart2 size={18} /></div>
                         <p style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                          Press <strong style={{ color: 'var(--emerald)' }}>Run</strong> to simulate
+                          Add gates to see simulation results
                         </p>
                       </div>
                     )}
@@ -950,6 +1025,19 @@ export default function MoriartyShell() {
       <AllGatesModal
         isOpen={isAllGatesOpen}
         onClose={() => setIsAllGatesOpen(false)}
+      />
+
+      <MakeGateModal
+        isOpen={isMakeGateOpen}
+        onClose={() => setIsMakeGateOpen(false)}
+        onCreateGate={(name, matrix, qubitsAmount) => {
+          // Add the custom gate to the custom gates state
+          // This makes it appear in the Custom section of the sidebar
+          const uniqueName = customGates[name] ? `${name}_${Date.now()}` : name;
+          setCustomGates(prev => ({ ...prev, [uniqueName]: matrix.flat() }));
+          // Also add the gate description
+          GATE_DESCRIPTIONS[uniqueName] = `Custom ${qubitsAmount}-qubit unitary gate`;
+        }}
       />
 
       {/* ── Drag overlay ── */}

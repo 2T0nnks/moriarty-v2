@@ -66,6 +66,15 @@
   --g-RX:   #4fd1c5; --g-RY:   #68d391; --g-RZ:   #9ae6b4;
   --g-ctrl: #f6ad55; --g-tgt:  #fc8181; --g-SWAP: #a0aec0;
   --g-M:    #718096;
+  /* Controlled gates */
+  --g-CX:   #e87040; --g-CY:   #d96090; --g-CZ:   #8b6cc4;
+  --g-CH:   #d49520;
+  /* Advanced gates */
+  --g-CCX:  #e05555; --g-CSWAP:#8098b8;
+  --g-CRX:  #3fc0b5; --g-CRY:  #58c380; --g-CRZ:  #80d6a0;
+  --g-CP:   #7a7eea;
+  /* Custom gate */
+  --g-UNI:  #e06080;
 
   /* ── Tipografia ── */
   --font-ui:   'Inter', system-ui, -apple-system, sans-serif;
@@ -474,6 +483,20 @@ body.is-dragging .m-sidebar * {
 .m-gate[data-gate="⊕"]    { color: var(--g-tgt);  border-color: rgba(252,129,129,0.2);  background: rgba(252,129,129,0.07); }
 .m-gate[data-gate="SWAP"] { color: var(--g-SWAP); border-color: rgba(160,174,192,0.2);  background: rgba(160,174,192,0.07); }
 .m-gate[data-gate="M"]    { color: var(--g-M);    border-color: rgba(113,128,150,0.2);  background: rgba(113,128,150,0.07); }
+/* Controlled gates */
+.m-gate[data-gate="CX"]   { color: var(--g-CX);   border-color: rgba(232,112,64,0.2);   background: rgba(232,112,64,0.07); }
+.m-gate[data-gate="CY"]   { color: var(--g-CY);   border-color: rgba(217,96,144,0.2);   background: rgba(217,96,144,0.07); }
+.m-gate[data-gate="CZ"]   { color: var(--g-CZ);   border-color: rgba(139,108,196,0.2);  background: rgba(139,108,196,0.07); }
+.m-gate[data-gate="CH"]   { color: var(--g-CH);   border-color: rgba(212,149,32,0.2);   background: rgba(212,149,32,0.07); }
+/* Advanced gates */
+.m-gate[data-gate="CCX"]  { color: var(--g-CCX);  border-color: rgba(224,85,85,0.2);    background: rgba(224,85,85,0.07); }
+.m-gate[data-gate="CSWAP"]{ color: var(--g-CSWAP);border-color: rgba(128,152,184,0.2);  background: rgba(128,152,184,0.07); }
+.m-gate[data-gate="CRX"]  { color: var(--g-CRX);  border-color: rgba(63,192,181,0.2);   background: rgba(63,192,181,0.07); }
+.m-gate[data-gate="CRY"]  { color: var(--g-CRY);  border-color: rgba(88,195,128,0.2);   background: rgba(88,195,128,0.07); }
+.m-gate[data-gate="CRZ"]  { color: var(--g-CRZ);  border-color: rgba(128,214,160,0.2);  background: rgba(128,214,160,0.07); }
+.m-gate[data-gate="CP"]   { color: var(--g-CP);   border-color: rgba(122,126,234,0.2);  background: rgba(122,126,234,0.07); }
+/* Custom unitary */
+.m-gate[data-gate="UNITARY"] { color: var(--g-UNI); border-color: rgba(224,96,128,0.2); background: rgba(224,96,128,0.07); font-size: 8px; }
 
 /* ═══════════════════════════════════════════════════════════════════════
    CIRCUITO — grid, wires, cells

@@ -24,7 +24,7 @@ class QuantumGate(BaseModel):
                 ``RX``, ``RY``, ``RZ``,
                 ``CNOT``/``CX``, ``CY``, ``CZ``, ``CH``, ``SWAP``,
                 ``CRX``, ``CRY``, ``CRZ``, ``CP``,
-                ``CCX``/``TOFFOLI``, ``CSWAP``/``FREDKIN``, ``M``.
+                ``CCX``/``TOFFOLI``, ``CSWAP``/``FREDKIN``, ``UNITARY``, ``M``.
         qubits: Ordered list of qubit indices the gate acts on.
                 Length must match the gate arity (1, 2, or 3).
         params: Optional rotation / phase angles (radians) for parameterised
