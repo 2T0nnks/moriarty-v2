@@ -22,7 +22,9 @@ COPY . .
 # on the host, so this works from any browser accessing localhost:3000.
 ENV NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+# ENV NEXT_TELEMETRY_DISABLED=1
+# Generate source maps for debugging
+ENV NEXT_GENERATE_SOURCEMAPS=true
 RUN pnpm build
 
 # ── Stage 3: production runner ───────────────────────────────────────────────

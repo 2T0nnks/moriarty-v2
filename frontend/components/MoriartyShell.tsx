@@ -16,6 +16,7 @@ import MakeGateModal from './MakeGateModal';
 import { ExecutionResults } from './ExecutionResults';
 import { ChatAssistant } from './ChatAssistant';
 import { useCircuit } from '../hooks/useCircuit';
+import { useBlochSphere, useAIConfig, useClipboard } from '../hooks';
 import {
   executeCircuit, optimizeCircuit, exportToLatex, exportToImage,
   exportToBloch, fetchConfig, QuantumGate, ExecutionResult, OptimizationResult,
@@ -120,44 +121,23 @@ export default function MoriartyShell() {
   const [execError, setExecError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 
-  // ── Bloch state ───────────────────────────────────────────────────────────────────────
-  const [blochImages, setBlochImages] = useState<string[]>([]);
-  const [isBlochLoading, setIsBlochLoading] = useState(false);
-
-  // ── Live Bloch Sphere — atualiza automaticamente quando o circuito muda ──────────────────────
-  useEffect(() => {
-    if (Object.keys(circuit).length === 0) {
-      setBlochImages([]);
-      return;
-    }
-    setIsBlochLoading(true);
-    const timer = setTimeout(async () => {
-      try {
-        const gates = buildGateList(circuit, gateParams, numQubits);
-        const data = await exportToBloch(gates, numQubits);
-        if ((data as any).bloch_images) {
-          setBlochImages((data as any).bloch_images);
-        } else if ((data as any).image_base64) {
-          setBlochImages([(data as any).image_base64]);
-        }
-      } catch {
-        // silently ignore
-      } finally {
-        setIsBlochLoading(false);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [circuit, gateParams, numQubits, numSteps]);
+  // ── Use new extracted hooks ────────────────────────────────────────────────
+  const gates = getGates();
+  const { images: blochImages, isLoading: isBlochLoading } = useBlochSphere(
+    gates,
+    numQubits,
+    { debounceMs: 500 }
+  );
+  const { enabled: aiEnabled } = useAIConfig();
+  const { copied, copy: handleCopy } = useClipboard(1800);
 
   // ── Optimize state ────────────────────────────────────────────────────────────
   const [optResult, setOptResult] = useState<OptimizationResult | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [optError, setOptError] = useState<string | null>(null);
 
   // ── Export state ──────────────────────────────────────────────────────────
   const [exportFmt, setExportFmt] = useState<ExportFmt>('qasm');
   const [exportCode, setExportCode] = useState('');
-  const [copied, setCopied] = useState(false);
 
   // ── AI state ─────────────────────────────────────────────────────────────
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -176,6 +156,16 @@ export default function MoriartyShell() {
     () => buildGateList(circuit, gateParams, numQubits),
     [circuit, gateParams, numQubits],
   );
+
+  // ── Use new extracted hooks (must be after getGates) ─────────────────────
+  const gates = getGates();
+  const { images: blochImages, isLoading: isBlochLoading } = useBlochSphere(
+    gates,
+    numQubits,
+    { debounceMs: 500 }
+  );
+  const { enabled: aiEnabled } = useAIConfig();
+  const { copied, copy: handleCopy } = useClipboard(1800);
 
   // ── DnD sensors (require 8px movement before activating drag) ─────────────
   const sensors = useSensors(
@@ -295,12 +285,6 @@ export default function MoriartyShell() {
   useEffect(() => {
     if (bottomTab === 'export') setExportCode(generateExport(exportFmt));
   }, [bottomTab, exportFmt, generateExport]);
-
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(exportCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  }, [exportCode]);
 
   // ── Save / Load ───────────────────────────────────────────────────────────
   const handleSave = useCallback(() => {
