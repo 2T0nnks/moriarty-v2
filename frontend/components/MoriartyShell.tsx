@@ -134,6 +134,7 @@ export default function MoriartyShell() {
   // ── Optimize state ────────────────────────────────────────────────────────────
   const [optResult, setOptResult] = useState<OptimizationResult | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optError, setOptError] = useState<string | null>(null);
 
   // ── Export state ──────────────────────────────────────────────────────────
   const [exportFmt, setExportFmt] = useState<ExportFmt>('qasm');
