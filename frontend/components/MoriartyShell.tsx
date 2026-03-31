@@ -815,7 +815,7 @@ export default function MoriartyShell() {
                     </div>
                     <div className="m-row" style={{ marginBottom: 6 }}>
                       <span className="m-label">{exportFmt.toUpperCase()}</span>
-                      <button className="m-btn m-btn-ghost m-btn-sm" style={{ marginLeft: 'auto' }} onClick={handleCopy}>
+                      <button className="m-btn m-btn-ghost m-btn-sm" style={{ marginLeft: 'auto' }} onClick={() => handleCopy(exportCode || generateExport(exportFmt))}>
                         {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
                       </button>
                     </div>

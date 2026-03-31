@@ -1,5 +1,5 @@
 import React from 'react';
-import { QAOA_PRESETS } from '../constants/algorithms';
+import { QAOA_PRESETS } from '../../constants/algorithms';
 
 interface QAOAConfigProps {
   preset: string;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { WALK_PRESETS } from '../constants/algorithms';
+import { WALK_PRESETS } from '../../constants/algorithms';
 
 interface WalkConfigProps {
   preset: string;

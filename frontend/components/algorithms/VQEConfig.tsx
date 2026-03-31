@@ -1,5 +1,5 @@
 import React from 'react';
-import { VQE_PRESETS, VQE_MAXCUT_PRESETS } from '../constants/algorithms';
+import { VQE_PRESETS, VQE_MAXCUT_PRESETS } from '../../constants/algorithms';
 
 interface VQEConfigProps {
   mode: 'hamiltonian' | 'maxcut';
