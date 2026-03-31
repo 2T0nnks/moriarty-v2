@@ -87,7 +87,12 @@ def build_circuit(num_qubits: int, gates: List[Dict[str, Any]]) -> QuantumCircui
                 qc.cz(qubits[0], qubits[1])
         elif name == "CH":
             if len(qubits) >= 2:
-                qc.ch(qubits[0], qubits[1])
+                # Controlled-Hadamard decomposition:
+                # CH = RY(-π/4) on target · CNOT(ctrl,tgt) · RY(π/4) on target
+                ctrl, tgt = qubits[0], qubits[1]
+                qc.ry(-np.pi/4, tgt)
+                qc.cx(ctrl, tgt)
+                qc.ry(np.pi/4, tgt)
         elif name == "SWAP":
             if len(qubits) >= 2:
                 qc.swap(qubits[0], qubits[1])
@@ -129,7 +134,7 @@ def build_circuit(num_qubits: int, gates: List[Dict[str, Any]]) -> QuantumCircui
             # For 2x2 (1 qubit), params has 8 items (4 complex numbers)
             # For 4x4 (2 qubits), params has 32 items (16 complex numbers)
             try:
-                from qiskit.extensions import UnitaryGate
+                from qiskit.circuit.library import UnitaryGate
                 complex_params = [
                     complex(params[i], params[i+1]) 
                     for i in range(0, len(params), 2)
