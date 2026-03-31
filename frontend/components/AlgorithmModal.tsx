@@ -13,74 +13,9 @@ interface AlgorithmModalProps {
     numQubits: number;
 }
 
-/* ═══════════════════════ QAOA PRESETS ═══════════════════════ */
+import { QAOAConfig, VQEConfig, WalkConfig } from './algorithms';
+import { QAOA_PRESETS, VQE_PRESETS, VQE_MAXCUT_PRESETS, WALK_PRESETS, CODE_TABS, VERTEX_COLORS } from '../constants/algorithms';
 
-interface QaoaPreset { label: string; desc: string; n: number; matrix: number[][]; linear: number[]; }
-
-const QAOA_PRESETS: Record<string, QaoaPreset> = {
-    maxcut_triangle: { label: 'MaxCut — Triangle (3q)', desc: 'H = Σ -ZZ  on triangle edges', n: 3,
-        matrix: [[0,-1,-1],[0,0,-1],[0,0,0]], linear: [0,0,0] },
-    maxcut_k4: { label: 'MaxCut — K₄ (4q)', desc: 'H = Σ -ZZ  on all 6 edges', n: 4,
-        matrix: [[0,-1,-1,-1],[0,0,-1,-1],[0,0,0,-1],[0,0,0,0]], linear: [0,0,0,0] },
-    ising_chain: { label: 'Ising Chain (4q)', desc: 'H = Σ -ZZ  nearest-neighbour', n: 4,
-        matrix: [[0,-1,-1,-1],[0,0,-1,-1],[0,0,0,-1],[0,0,0,0]], linear: [0,0,0,0] },
-    mvc_triangle: { label: 'Vertex Cover — △ (3q)', desc: 'H = ¾(ZZ+Z+Z) − Z per edge & vertex', n: 3,
-        matrix: [[0,0.75,0.75],[0,0,0.75],[0,0,0]], linear: [0.5,0.5,0.5] },
-    mvc_path4: { label: 'Vertex Cover — Path (4q)', desc: 'Path 0-1-2-3', n: 4,
-        matrix: [[0,0.75,0,0],[0,0,0.75,0],[0,0,0,0.75],[0,0,0,0]], linear: [-0.25,0.5,0.5,-0.25] },
-    maxcut_ring5: { label: 'MaxCut — Ring (5q)', desc: 'H = Σ -ZZ on 5-ring', n: 5,
-        matrix: [[0,-1,0,0,-1],[0,0,-1,0,0],[0,0,0,-1,0],[0,0,0,0,-1],[0,0,0,0,0]], linear: [0,0,0,0,0] },
-    custom_qaoa: { label: 'Custom', desc: 'Define J_{ij} & h_i', n: 0, matrix: [], linear: [] },
-};
-
-/* ═══════════════════════ VQE PRESETS ═══════════════════════ */
-
-const VQE_PRESETS: Record<string, { label: string; desc: string; n: number; bases: string[]; scales: number[] }> = {
-    zz_2q: { label: '−Z⊗Z (2q)', desc: 'Simplest 2-qubit Ising', n: 2, bases: ['ZZ'], scales: [-1.0] },
-    zz_zi_2q: { label: '−Z⊗Z − Z⊗I (2q)', desc: 'ZZ + single-Z field', n: 2, bases: ['ZZ','ZI'], scales: [-1,-1] },
-    heisenberg_2q: { label: 'Heisenberg XX+YY+ZZ (2q)', desc: 'Full isotropic', n: 2, bases: ['XX','YY','ZZ'], scales: [1,1,1] },
-    ising_3q: { label: 'Ising Chain (3q)', desc: '−ZZI − IZZ', n: 3, bases: ['ZZI','IZZ'], scales: [-1,-1] },
-    transverse_ising_3q: { label: 'Transverse-field Ising (3q)', desc: '−ZZI − IZZ + 0.5 X fields', n: 3,
-        bases: ['ZZI','IZZ','XII','IXI','IIX'], scales: [-1,-1,0.5,0.5,0.5] },
-    custom_vqe: { label: 'Custom', desc: 'Bases & scales', n: 0, bases: [], scales: [] },
-};
-
-interface VqeMaxcutPreset { label: string; desc: string; n: number; adj: number[][]; invert: boolean }
-const VQE_MAXCUT_PRESETS: Record<string, VqeMaxcutPreset> = {
-    book_4v: { label: 'Example (4v)', desc: 'Similarity matrix → inverted (1−A) for MaxCut', n: 4,
-        adj: [[1,0,0,0],[0,1,0,1],[0,0,1,0],[0,1,0,1]], invert: true },
-    triangle_3v: { label: 'Triangle (3v)', desc: 'All-to-all 3-vertex graph', n: 3,
-        adj: [[0,1,1],[1,0,1],[1,1,0]], invert: false },
-    path_4v: { label: 'Path (4v)', desc: 'Linear chain 0-1-2-3', n: 4,
-        adj: [[0,1,0,0],[1,0,1,0],[0,1,0,1],[0,0,1,0]], invert: false },
-    k4_complete: { label: 'Complete K₄', desc: 'All 6 edges', n: 4,
-        adj: [[0,1,1,1],[1,0,1,1],[1,1,0,1],[1,1,1,0]], invert: false },
-    custom_maxcut: { label: 'Custom', desc: 'Enter adjacency matrix', n: 0, adj: [], invert: false },
-};
-
-/* ═══════════════════════ WALK PRESETS ═══════════════════════ */
-
-const WALK_PRESETS: Record<string, { label: string; desc: string; topology: string; n: number }> = {
-    cycle_4:    { label: 'Cycle (4 vertices)',    desc: 'Ring graph — periodic boundary',     topology: 'cycle',    n: 4 },
-    cycle_8:    { label: 'Cycle (8 vertices)',    desc: 'Larger ring — shows spreading',      topology: 'cycle',    n: 8 },
-    path_4:     { label: 'Path (4 vertices)',     desc: 'Linear chain — reflecting ends',     topology: 'path',     n: 4 },
-    path_8:     { label: 'Path (8 vertices)',     desc: 'Longer chain — boundary effects',    topology: 'path',     n: 8 },
-    complete_4: { label: 'Complete K₄',           desc: 'All-to-all connections',             topology: 'complete', n: 4 },
-    star_5:     { label: 'Star (5 vertices)',     desc: 'Central hub + 4 leaves',             topology: 'star',     n: 5 },
-    grid_4:     { label: 'Grid (4 vertices)',     desc: '2×2 square lattice',                 topology: 'grid',     n: 4 },
-    custom_walk:{ label: 'Custom',                desc: 'Custom adjacency matrix',            topology: 'custom',   n: 0 },
-};
-
-const CODE_TABS = [
-    { key: 'qiskit',   label: 'Qiskit' },
-    { key: 'pennylane', label: 'PennyLane' },
-    { key: 'cirq',      label: 'Cirq' },
-    { key: 'qsharp',    label: 'Q#' },
-    { key: 'qasm',      label: 'QASM' },
-];
-
-const VERTEX_COLORS = ['#8B5CF6','#3B82F6','#10B981','#F59E0B','#EF4444','#EC4899','#06B6D4','#84CC16',
-    '#F97316','#6366F1','#14B8A6','#D946EF','#FB923C','#22D3EE','#A3E635','#F472B6'];
 
 export default function AlgorithmModal({ isOpen, onClose, numQubits }: AlgorithmModalProps) {
     const [algorithm, setAlgorithm] = useState<'QAOA' | 'VQE' | 'Walk'>('QAOA');
@@ -235,120 +170,71 @@ export default function AlgorithmModal({ isOpen, onClose, numQubits }: Algorithm
                             </div>
                         </div>
 
-                        {/* QAOA */}
-                        {algorithm === 'QAOA' && (<>
-                            <div>
-                                <label className={labelCls} style={labelStyle}>Problem Preset</label>
-                                <select value={qaoaPreset} onChange={e => handleQaoaPreset(e.target.value)} className={inputCls} style={inputStyle}>
-                                    {Object.entries(QAOA_PRESETS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-                                </select>
-                                {qaoaPreset !== 'custom_qaoa' && <p className="text-[10px] mt-1" style={{ color: 'var(--text-3)' }}>{QAOA_PRESETS[qaoaPreset]?.desc}</p>}
-                            </div>
-                            <div><label className={labelCls} style={labelStyle}>Qubits</label>
-                                <input type="number" value={qaoaQubits} onChange={e => setQaoaQubits(+e.target.value||2)} className={inputCls} style={inputStyle} min={2} max={10}/></div>
-                            <div><label className={labelCls} style={labelStyle}>J<sub>ij</sub> Matrix <span style={{ color: 'var(--text-3)' }}>(ZZ)</span></label>
-                                <textarea value={matrixStr} onChange={e => { setMatrixStr(e.target.value); setQaoaPreset('custom_qaoa'); }} className={`${inputCls} h-16 text-xs font-mono resize-none`} style={inputStyle}/></div>
-                            <div><label className={labelCls} style={labelStyle}>h<sub>i</sub> Linear <span style={{ color: 'var(--text-3)' }}>(Z)</span></label>
-                                <textarea value={linearStr} onChange={e => { setLinearStr(e.target.value); setQaoaPreset('custom_qaoa'); }} className={`${inputCls} h-10 text-xs font-mono resize-none`} style={inputStyle}/>
-                                {hasLinear && <p className="text-[10px] mt-1" style={{ color: 'var(--accent-yellow)' }}>⚡ General Ising / MVC mode</p>}</div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><label className={labelCls} style={labelStyle}>Layers (p)</label><input type="number" value={pLayers} onChange={e => setPLayers(+e.target.value||1)} className={inputCls} style={inputStyle} min={1} max={10}/></div>
-                                <div><label className={labelCls} style={labelStyle}>Shots</label><input type="number" value={shots} onChange={e => setShots(+e.target.value||1024)} className={inputCls} style={inputStyle} min={1}/></div>
-                            </div>
-                        </>)}
+                        {/* QAOA Config */}
+                        {algorithm === 'QAOA' && (
+                            <QAOAConfig
+                                preset={qaoaPreset}
+                                qubits={qaoaQubits}
+                                matrixStr={matrixStr}
+                                linearStr={linearStr}
+                                pLayers={pLayers}
+                                shots={shots}
+                                onPresetChange={handleQaoaPreset}
+                                onQubitsChange={(n) => { setQaoaQubits(n); setQaoaPreset('custom_qaoa'); }}
+                                onMatrixChange={(s) => { setMatrixStr(s); setQaoaPreset('custom_qaoa'); }}
+                                onLinearChange={(s) => { setLinearStr(s); setQaoaPreset('custom_qaoa'); }}
+                                onPLayersChange={setPLayers}
+                                onShotsChange={setShots}
+                            />
+                        )}
 
-                        {/* VQE */}
-                        {algorithm === 'VQE' && (<>
-                            <div>
-                                <label className={labelCls} style={labelStyle}>Mode</label>
-                                <div className="flex rounded-lg p-1" style={{ background: 'var(--bg-input)' }}>
-                                    <button onClick={() => setVqeMode('hamiltonian')}
-                                        className="flex-1 py-1.5 text-[11px] rounded-md transition-colors font-medium"
-                                        style={{ background: vqeMode === 'hamiltonian' ? 'var(--blue)' : 'transparent', color: vqeMode === 'hamiltonian' ? 'white' : 'var(--text-3)' }}>
-                                        Hamiltonian
-                                    </button>
-                                    <button onClick={() => setVqeMode('maxcut')}
-                                        className="flex-1 py-1.5 text-[11px] rounded-md transition-colors font-medium"
-                                        style={{ background: vqeMode === 'maxcut' ? 'var(--blue)' : 'transparent', color: vqeMode === 'maxcut' ? 'white' : 'var(--text-3)' }}>
-                                        MaxCut Graph
-                                    </button>
-                                </div>
-                            </div>
+                        {/* VQE Config */}
+                        {algorithm === 'VQE' && (
+                            <VQEConfig
+                                mode={vqeMode}
+                                preset={vqePreset}
+                                maxcutPreset={vqeMaxcutPreset}
+                                qubits={vqeQubits}
+                                basesStr={basesStr}
+                                scalesStr={scalesStr}
+                                ansatzDepth={ansatzDepth}
+                                shots={shots}
+                                vqeAdjStr={vqeAdjStr}
+                                vqeInvert={vqeInvert}
+                                onModeChange={setVqeMode}
+                                onPresetChange={handleVqePreset}
+                                onMaxcutPresetChange={handleVqeMaxcutPreset}
+                                onQubitsChange={(n) => { setVqeQubits(n); setVqePreset('custom_vqe'); setVqeMaxcutPreset('custom_maxcut'); }}
+                                onBasesChange={(s) => { setBasesStr(s); setVqePreset('custom_vqe'); }}
+                                onScalesChange={(s) => { setScalesStr(s); setVqePreset('custom_vqe'); }}
+                                onAnsatzDepthChange={setAnsatzDepth}
+                                onShotsChange={setShots}
+                                onVqeAdjChange={(s) => { setVqeAdjStr(s); setVqeMaxcutPreset('custom_maxcut'); }}
+                                onVqeInvertChange={setVqeInvert}
+                            />
+                        )}
 
-                            {vqeMode === 'hamiltonian' ? (<>
-                                <div>
-                                    <label className={labelCls} style={labelStyle}>Problem Preset</label>
-                                    <select value={vqePreset} onChange={e => handleVqePreset(e.target.value)} className={inputCls} style={inputStyle}>
-                                        {Object.entries(VQE_PRESETS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-                                    </select>
-                                    {vqePreset !== 'custom_vqe' && <p className="text-[10px] mt-1" style={{ color: 'var(--text-3)' }}>{VQE_PRESETS[vqePreset]?.desc}</p>}
-                                </div>
-                                <div><label className={labelCls} style={labelStyle}>Qubits</label><input type="number" value={vqeQubits} onChange={e => setVqeQubits(+e.target.value||2)} className={inputCls} style={inputStyle} min={2} max={10}/></div>
-                                <div><label className={labelCls} style={labelStyle}>Bases <span style={{ color: 'var(--text-3)' }}>(Pauli)</span></label>
-                                    <textarea value={basesStr} onChange={e => { setBasesStr(e.target.value); setVqePreset('custom_vqe'); }} className={`${inputCls} h-14 text-xs font-mono resize-none`} style={inputStyle}/></div>
-                                <div><label className={labelCls} style={labelStyle}>Scales <span style={{ color: 'var(--text-3)' }}>(coeffs)</span></label>
-                                    <textarea value={scalesStr} onChange={e => { setScalesStr(e.target.value); setVqePreset('custom_vqe'); }} className={`${inputCls} h-14 text-xs font-mono resize-none`} style={inputStyle}/></div>
-                            </>) : (<>
-                                <div>
-                                    <label className={labelCls} style={labelStyle}>Graph Preset</label>
-                                    <select value={vqeMaxcutPreset} onChange={e => handleVqeMaxcutPreset(e.target.value)} className={inputCls} style={inputStyle}>
-                                        {Object.entries(VQE_MAXCUT_PRESETS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-                                    </select>
-                                    {vqeMaxcutPreset !== 'custom_maxcut' && <p className="text-[10px] mt-1" style={{ color: 'var(--text-3)' }}>{VQE_MAXCUT_PRESETS[vqeMaxcutPreset]?.desc}</p>}
-                                </div>
-                                <div><label className={labelCls} style={labelStyle}>Vertices (Qubits)</label>
-                                    <input type="number" value={vqeQubits} onChange={e => { setVqeQubits(+e.target.value||4); setVqeMaxcutPreset('custom_maxcut'); }} className={inputCls} style={inputStyle} min={2} max={10}/></div>
-                                <div><label className={labelCls} style={labelStyle}>Adjacency Matrix</label>
-                                    <textarea value={vqeAdjStr} onChange={e => { setVqeAdjStr(e.target.value); setVqeMaxcutPreset('custom_maxcut'); }}
-                                        className={`${inputCls} h-20 text-xs font-mono resize-none`} style={inputStyle} placeholder='[[1,0,0,0],[0,1,0,1],[0,0,1,0],[0,1,0,1]]'/></div>
-                                <div className="flex items-center gap-2">
-                                    <input type="checkbox" checked={vqeInvert} onChange={e => setVqeInvert(e.target.checked)} id="vqe-invert"
-                                        className="accent-blue-500"/>
-                                    <label htmlFor="vqe-invert" className="text-[10px]" style={{ color: 'var(--text-3)' }}>Invert adjacency (use distance matrix 1−A)</label>
-                                </div>
-
-                            </>)}
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><label className={labelCls} style={labelStyle}>Ansatz Depth</label><input type="number" value={ansatzDepth} onChange={e => setAnsatzDepth(+e.target.value||1)} className={inputCls} style={inputStyle} min={1} max={10}/></div>
-                                <div><label className={labelCls} style={labelStyle}>Shots</label><input type="number" value={shots} onChange={e => setShots(+e.target.value||1024)} className={inputCls} style={inputStyle} min={1}/></div>
-                            </div>
-                        </>)}
-
-                        {/* Quantum Walk */}
-                        {algorithm === 'Walk' && (<>
-                            <div>
-                                <label className={labelCls} style={labelStyle}>Graph Topology</label>
-                                <select value={walkPreset} onChange={e => handleWalkPreset(e.target.value)} className={inputCls} style={inputStyle}>
-                                    {Object.entries(WALK_PRESETS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-                                </select>
-                                {walkPreset !== 'custom_walk' && <p className="text-[10px] mt-1" style={{ color: 'var(--text-3)' }}>{WALK_PRESETS[walkPreset]?.desc}</p>}
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><label className={labelCls} style={labelStyle}>Vertices</label>
-                                    <input type="number" value={walkVertices} onChange={e => { setWalkVertices(+e.target.value||4); setWalkPreset('custom_walk'); }}
-                                        className={inputCls} style={inputStyle} min={2} max={16}/></div>
-                                <div><label className={labelCls} style={labelStyle}>Start Vertex</label>
-                                    <input type="number" value={walkInitial} onChange={e => setWalkInitial(+e.target.value||0)}
-                                        className={inputCls} style={inputStyle} min={0} max={walkVertices-1}/></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div><label className={labelCls} style={labelStyle}>Time Steps</label>
-                                    <input type="number" value={walkSteps} onChange={e => setWalkSteps(+e.target.value||10)}
-                                        className={inputCls} style={inputStyle} min={1} max={50}/></div>
-                                <div><label className={labelCls} style={labelStyle}>Δt</label>
-                                    <input type="number" value={walkDt} onChange={e => setWalkDt(+e.target.value||0.5)}
-                                        className={inputCls} style={inputStyle} min={0.1} max={2} step={0.1}/></div>
-                            </div>
-                            {walkPreset === 'custom_walk' && (
-                                <div><label className={labelCls} style={labelStyle}>Adjacency Matrix <span style={{ color: 'var(--text-3)' }}>(optional JSON)</span></label>
-                                    <textarea value={walkMatrixStr} onChange={e => setWalkMatrixStr(e.target.value)}
-                                        className={`${inputCls} h-16 text-xs font-mono resize-none`} style={inputStyle} placeholder='[[0,1,0],[1,0,1],[0,1,0]]'/></div>
-                            )}
-                            <div><label className={labelCls} style={labelStyle}>Shots</label>
-                                <input type="number" value={shots} onChange={e => setShots(+e.target.value||1024)} className={inputCls} style={inputStyle} min={1}/></div>
-
-                        </>)}
+                        {/* Walk Config */}
+                        {algorithm === 'Walk' && (
+                            <WalkConfig
+                                preset={walkPreset}
+                                topology={walkTopology}
+                                vertices={walkVertices}
+                                initial={walkInitial}
+                                steps={walkSteps}
+                                dt={walkDt}
+                                shots={shots}
+                                matrixStr={walkMatrixStr}
+                                onPresetChange={handleWalkPreset}
+                                onTopologyChange={setWalkTopology}
+                                onVerticesChange={(n) => { setWalkVertices(n); setWalkPreset('custom_walk'); }}
+                                onInitialChange={setWalkInitial}
+                                onStepsChange={setWalkSteps}
+                                onDtChange={setWalkDt}
+                                onShotsChange={setShots}
+                                onMatrixChange={setWalkMatrixStr}
+                            />
+                        )}
 
                         {/* Shared optimizer */}
                         {algorithm !== 'Walk' && (
