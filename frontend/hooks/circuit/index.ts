@@ -6,37 +6,81 @@ interface UseBlochSphereOptions {
   debounceMs?: number;
 }
 
+// Helper to compare gates deeply
+function gatesEqual(a: QuantumGate[], b: QuantumGate[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((gate, i) => 
+    gate.name === b[i].name &&
+    gate.qubits.length === b[i].qubits.length &&
+    gate.qubits.every((q, j) => q === b[i].qubits[j]) &&
+    (gate.params?.length || 0) === (b[i].params?.length || 0) &&
+    (gate.params || []).every((p, j) => p === (b[i].params || [])[j])
+  );
+}
+
 export function useBlochSphere(
   gates: QuantumGate[],
   numQubits: number,
   options: UseBlochSphereOptions = {}
 ) {
-  const { debounceMs = 500 } = options;
+  const { debounceMs = 200 } = options;
   const [images, setImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const prevGatesRef = useRef<QuantumGate[]>([]);
+  const errorCountRef = useRef(0);
 
   useEffect(() => {
     if (gates.length === 0) {
       setImages([]);
       setError(null);
+      prevGatesRef.current = [];
+      errorCountRef.current = 0;
+      return;
+    }
+
+    // Skip if gates haven't actually changed
+    if (gatesEqual(gates, prevGatesRef.current)) {
+      return;
+    }
+
+    // Stop trying after 3 consecutive errors to avoid spamming
+    if (errorCountRef.current >= 3) {
       return;
     }
 
     setIsLoading(true);
     setError(null);
+    // Only update prevGatesRef after successful API call
+    const currentGates = gates;
 
     const timer = setTimeout(async () => {
       try {
-        const data = await exportToBloch(gates, numQubits);
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        
+        const data = await exportToBloch(currentGates, numQubits, controller.signal);
+        clearTimeout(timeoutId);
+        
+        // Update prevGatesRef only after successful call
+        prevGatesRef.current = currentGates;
+        
         if ((data as any).bloch_images) {
           setImages((data as any).bloch_images);
         } else if ((data as any).image_base64) {
           setImages([(data as any).image_base64]);
         }
-      } catch (err) {
-        setError('Failed to generate Bloch sphere visualization');
+        errorCountRef.current = 0;
+      } catch (err: any) {
+        errorCountRef.current++;
+        if (err.name === 'AbortError') {
+          setError('Bloch sphere generation timed out');
+        } else {
+          setError('Failed to generate Bloch sphere visualization');
+        }
         console.error('Bloch sphere error:', err);
+        setIsLoading(false);
       } finally {
         setIsLoading(false);
       }
@@ -50,7 +94,7 @@ export function useBlochSphere(
 
 export function useAIConfig() {
   const [enabled, setEnabled] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

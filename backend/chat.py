@@ -25,18 +25,22 @@ DEFAULT_MODEL   = "qwen2.5:1.5b"
 
 GENERATION_OPTIONS = {
     "temperature": 0.3,
-    "num_predict": 600,
+    "num_predict": 300,  # Reduzido de 600 para respostas mais rápidas
     "top_p": 0.9,
     "repeat_penalty": 1.1,
     "num_ctx": 2048,
+    "num_gpu": 99,  # Usar GPU se disponível (99 = todas as camadas)
+    "batch_size": 512,  # Aumentar batch size para processamento mais rápido
 }
 
 BUILD_CIRCUIT_OPTIONS = {
     "temperature": 0.1,
-    "num_predict": 500,
+    "num_predict": 200,  # Reduzido de 500 - circuitos precisam de menos tokens
     "top_p": 0.9,
     "repeat_penalty": 1.1,
     "num_ctx": 1024,
+    "num_gpu": 99,
+    "batch_size": 512,
 }
 
 # ---------------------------------------------------------------------------

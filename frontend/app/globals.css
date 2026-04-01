@@ -244,6 +244,20 @@ code, pre, kbd, .mono { font-family: var(--font-code); }
   overflow: hidden;
   transition: width var(--t-normal), min-width var(--t-normal);
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.m-sidebar .m-fill.m-scroll {
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.m-sidebar .m-btn {
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
 }
 
 .m-sidebar.collapsed {

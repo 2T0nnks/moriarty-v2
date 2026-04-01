@@ -17,14 +17,9 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# NEXT_PUBLIC_API_URL is baked into the client bundle at build time.
-# The browser calls http://localhost:8000 directly — Docker exposes port 8000
-# on the host, so this works from any browser accessing localhost:3000.
 ENV NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NODE_ENV=production
-# ENV NEXT_TELEMETRY_DISABLED=1
-# Generate source maps for debugging
-ENV NEXT_GENERATE_SOURCEMAPS=true
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
 # ── Stage 3: production runner ───────────────────────────────────────────────

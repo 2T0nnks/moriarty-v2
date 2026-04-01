@@ -248,41 +248,59 @@ def get_bloch_image(circuit: QuantumCircuit) -> Dict[str, Any]:
         result = simulator.run(compiled).result()
         statevector = result.get_statevector(circuit_sv)
 
-        from qiskit.visualization import plot_bloch_vector
         from qiskit.quantum_info import partial_trace
-        import io
-        import base64
-        import matplotlib
-        matplotlib.use("Agg")  # Non-interactive backend for server-side rendering
-        import matplotlib.pyplot as plt
 
         num_qubits = circuit.num_qubits
-        bloch_images: List[str] = []
-
+        
+        # Pre-compute all reduced density matrices (fast, no matplotlib)
+        bloch_vectors = []
         for i in range(num_qubits):
-            # Trace out every qubit except qubit i
             trace_indices = [j for j in range(num_qubits) if j != i]
             rho = partial_trace(statevector, trace_indices)
-
-            # Extract Bloch vector from the 2×2 density matrix
             dm = rho.data
             x = float(np.real(dm[0, 1] + dm[1, 0]))
             y = float(np.real(1j * (dm[0, 1] - dm[1, 0])))
             z = float(np.real(dm[0, 0] - dm[1, 1]))
+            bloch_vectors.append((i, x, y, z))
 
-            fig = plt.figure(figsize=(3, 3))
-            ax = fig.add_subplot(111, projection="3d")
-            plot_bloch_vector([x, y, z], ax=ax, title=f"Qubit {i}")
-
-            buf = io.BytesIO()
-            fig.savefig(buf, format="png", bbox_inches="tight", transparent=True)
-            buf.seek(0)
-            bloch_images.append(base64.b64encode(buf.read()).decode("utf-8"))
-            plt.close(fig)
+        # Generate images in parallel for multiple qubits
+        if num_qubits > 1:
+            from concurrent.futures import ThreadPoolExecutor
+            max_workers = min(num_qubits, 4)  # Limit to 4 threads max
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                bloch_images = list(executor.map(_generate_bloch_image, bloch_vectors))
+        else:
+            # Single qubit: no need for parallelization
+            bloch_images = [_generate_bloch_image(bloch_vectors[0])]
 
         return {"bloch_images": bloch_images}
     except Exception as e:
         return {"error": str(e)}
+
+
+def _generate_bloch_image(args):
+    """Helper function to generate a single Bloch sphere image (for parallel execution)."""
+    import io
+    import base64
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from qiskit.visualization import plot_bloch_vector
+    
+    i, x, y, z = args
+    
+    fig = plt.figure(figsize=(3, 3))
+    ax = fig.add_subplot(111, projection="3d")
+    
+    plot_bloch_vector([x, y, z], ax=ax, title=f"Qubit {i}")
+    
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", transparent=True)
+    buf.seek(0)
+    result = base64.b64encode(buf.read()).decode("utf-8")
+    plt.close(fig)
+    
+    return result
 
 
 # ---------------------------------------------------------------------------

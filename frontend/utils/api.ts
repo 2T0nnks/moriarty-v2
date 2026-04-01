@@ -201,11 +201,12 @@ export const exportToImage = async (
 export const exportToBloch = async (
     gates: QuantumGate[],
     numQubits: number,
+    signal?: AbortSignal,
 ): Promise<{ bloch_images?: string[]; image_base64?: string }> => {
     const response = await axios.post(`${API_URL}/export/bloch`, {
         gates,
         num_qubits: numQubits,
-    });
+    }, { signal });
     return response.data;
 };
 

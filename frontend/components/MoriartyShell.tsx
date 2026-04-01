@@ -132,7 +132,7 @@ export default function MoriartyShell() {
   const { images: blochImages, isLoading: isBlochLoading } = useBlochSphere(
     gates,
     numQubits,
-    { debounceMs: 500 }
+    { debounceMs: 100 }
   );
   const { enabled: aiEnabled } = useAIConfig();
   const { copied, copy: handleCopy } = useClipboard(1800);
@@ -158,30 +158,28 @@ export default function MoriartyShell() {
   // ── DnD handlers ─────────────────────────────────────────────────────────
   const handleDragStart = useCallback((e: DragStartEvent) => {
     setActiveGate(String(e.active.data.current?.name ?? e.active.id));
-    // Libera overflow da sidebar durante o drag para o ghost não ser cortado
     const sidebar = document.querySelector<HTMLElement>('.m-sidebar');
     const fill = document.querySelector<HTMLElement>('.m-fill.m-scroll');
     if (sidebar) sidebar.style.overflow = 'visible';
     if (fill) fill.style.overflow = 'visible';
+    document.body.classList.add('is-dragging');
   }, []);
 
   const handleDragEnd = useCallback((e: DragEndEvent) => {
     setActiveGate(null);
-    // Restaura overflow da sidebar
     const sidebar = document.querySelector<HTMLElement>('.m-sidebar');
     const fill = document.querySelector<HTMLElement>('.m-fill.m-scroll');
     if (sidebar) sidebar.style.overflow = '';
     if (fill) fill.style.overflow = '';
+    document.body.classList.remove('is-dragging');
     const { over, active } = e;
     if (!over) return;
     const gateName = String(active.data.current?.name ?? active.id);
     const cellId = String(over.id);
     if (circuit[cellId]) return;
     
-    // Check if this is a custom gate and add its params
     if (customGates[gateName]) {
       addGate(cellId, 'UNITARY');
-      // Need to update params for this cell after adding
       setTimeout(() => updateGateParams(cellId, customGates[gateName]), 0);
     } else {
       addGate(cellId, gateName);
@@ -219,6 +217,24 @@ export default function MoriartyShell() {
       setIsRunning(false);
     }
   }, [getGates, numQubits, gateCount]);
+
+  // ── Auto-run effect ─────────────────────────────────────────────────────────
+  const prevGateCountRef = useRef(0);
+  
+  useEffect(() => {
+    // Auto-run when gates are added (not on initial load or clear)
+    if (gateCount > 0 && gateCount !== prevGateCountRef.current) {
+      prevGateCountRef.current = gateCount;
+      // Debounce to avoid multiple runs when adding gates quickly
+      const timer = setTimeout(() => {
+        if (gateCount > 0) {
+          handleRun();
+        }
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+    prevGateCountRef.current = gateCount;
+  }, [gateCount, handleRun]);
 
   // ── Optimize ───────────────────────────────────────────────────────────────────────
   const handleOptimize = useCallback(async () => {
@@ -522,8 +538,9 @@ export default function MoriartyShell() {
               {!sidebarCollapsed && (
                 <button
                   className="m-btn m-btn-outline"
-                  style={{ width: '100%', marginTop: 4 }}
+                  style={{ width: '100%', marginTop: 4, position: 'relative', zIndex: 1 }}
                   onClick={() => setIsAllGatesOpen(true)}
+                  type="button"
                 >
                   <Layers size={12} />
                   All Gates
@@ -566,8 +583,9 @@ export default function MoriartyShell() {
               {!sidebarCollapsed && (
                 <button
                   className="m-btn m-btn-outline"
-                  style={{ width: '100%', marginTop: 4 }}
+                  style={{ width: '100%', marginTop: 4, position: 'relative', zIndex: 1 }}
                   onClick={() => setIsMakeGateOpen(true)}
+                  type="button"
                 >
                   <Wand2 size={12} />
                   Make Gate
@@ -998,11 +1016,8 @@ export default function MoriartyShell() {
         isOpen={isMakeGateOpen}
         onClose={() => setIsMakeGateOpen(false)}
         onCreateGate={(name, matrix, qubitsAmount) => {
-          // Add the custom gate to the custom gates state
-          // This makes it appear in the Custom section of the sidebar
           const uniqueName = customGates[name] ? `${name}_${Date.now()}` : name;
           setCustomGates(prev => ({ ...prev, [uniqueName]: matrix.flat() }));
-          // Also add the gate description
           GATE_DESCRIPTIONS[uniqueName] = `Custom ${qubitsAmount}-qubit unitary gate`;
         }}
       />

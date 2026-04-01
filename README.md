@@ -1,8 +1,10 @@
-# Moriarty — Quantum Circuit Debugger
+# Moriarty v2 — Quantum Circuit Debugger
 
 **Language / Idioma / Idioma:** [English](./README.md) · [Português (BR)](./README.pt-BR.md) · [Español](./README.es.md)
 
-> Quantum circuit design, simulation and analysis. A modern web platform for designing, simulating, optimizing, and debugging quantum circuits — with an optional AI Assistant, variational algorithms (VQE, QAOA), and multiple export options.
+> Quantum circuit design, simulation and analysis. A modern web platform for designing, simulating, optimizing, and debugging quantum circuits — with an **optional AI Assistant** powered by Ollama, variational algorithms (VQE, QAOA), and multiple export options.
+>
+> **Note:** This is the full-featured version with optional AI capabilities. For a lightweight version without AI/Ollama dependencies, see [moriarty-no-ia](https://github.com/2T0nnks/moriarty-no-ia).
 
 [![Frontend](https://img.shields.io/badge/Frontend-Next.js%2016-b8c1ec?style=flat-square)](https://nextjs.org/)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI%20+%20Qiskit-d4939d?style=flat-square)](https://qiskit.org/)
@@ -26,8 +28,8 @@ Docker is the standard and recommended method. It guarantees a consistent, isola
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/2T0nnks/moriarty.git
-cd moriarty
+git clone https://github.com/2T0nnks/moriarty-v2.git
+cd moriarty-v2
 ```
 
 ### Step 2: Choose Your Setup
@@ -88,9 +90,9 @@ Once started, the application will be available at **[http://localhost:3000](htt
 ## 📂 Repository Structure
 
 ```
-/moriarty
+/moriarty-v2
 ├── frontend/         # Next.js App Router: layout, pages, components, etc.
-├── backend/          # FastAPI + Qiskit backend
+├── backend/          # FastAPI + Qiskit backend (includes AI chat support)
 ├── docs/             # Documentation and install guides
 ├── scripts/          # Convenience scripts for Linux and Windows
 ├── docker-compose.yml         # Base: frontend + backend
