@@ -80,11 +80,39 @@ Una vez iniciada, la aplicación estará disponible en **[http://localhost:3000]
 - **Selección de Modelos:** Elige entre una variedad de modelos de código abierto (Qwen, DeepSeek) para el asistente.
 - **Algoritmos Variacionales:** Configura y ejecuta experimentos VQE y QAOA.
 - **Optimizador de Circuitos:** Optimiza automáticamente tu circuito para un mejor rendimiento.
-- **Múltiples Opciones de Exportación:** Exporta tu circuito a QASM, Qiskit, PL, Cirq y Q#.
+- **Múltiples Opciones de Exportación:** Exporta tu circuito a - **Puertas Personalizadas:** Define y reutiliza tus propias puertas compuestas mediante el constructor Make Gate.
+QASM, Qiskit, PennyLane, Cirq, Q# y LaTeX.
 - **Tema Oscuro:** Un tema oscuro elegante y cómodo para la vista con detalles en ámbar.
 
 ---
 
+## Captura de pantalla
+
+![Constructor de circuitos](./docs/screenshots/builder.png)
+
+*Constructor de circuitos con la paleta de puertas, esferas de Bloch por qubit y exportacion a Qiskit en tiempo real.*
+
+---
+
+## Arquitectura
+
+![Arquitectura](./docs/architecture.png)
+
+Moriarty v2 se ejecuta como tres servicios independientes orquestados por Docker Compose:
+
+| Servicio | Stack | Responsabilidad |
+|---|---|---|
+| **frontend** | Next.js 16 (App Router), TypeScript | Constructor de circuitos drag-and-drop, esferas de Bloch, graficos de probabilidad, configuracion de algoritmos |
+| **backend** | FastAPI, Qiskit, Qiskit Aer | Construccion de circuitos desde descripciones JSON, simulacion, extraccion de statevector, optimizacion, VQE/QAOA, exportacion multiformato |
+| **ollama** *(opcional)* | Ollama | Asistente en lenguaje natural ejecutado **localmente** - ningun dato del circuito sale de la maquina |
+
+**Contrato entre capas.** El frontend nunca manipula objetos Qiskit. Los circuitos viajan como listas ordenadas de descripciones de puerta (`{ name, qubits, params }`), y el backend es el unico responsable de traducirlas a un `QuantumCircuit`. La logica cuantica se concentra en un solo lugar y el motor de simulacion puede sustituirse sin tocar la interfaz.
+
+**Puertas soportadas.** Un qubit: H, X, Y, Z, S, T, RX, RY, RZ. Dos qubits: CNOT/CX, CY, CZ, CH, SWAP, CRX, CRY, CRZ, CP. Tres qubits: CCX (Toffoli), CSWAP (Fredkin). Medicion: M. Las puertas compuestas pueden definirse en tiempo de ejecucion mediante Make Gate.
+
+**Privado por defecto.** El asistente de IA es opcional y se ejecuta en un contenedor local. No se llama a ninguna API de terceros en ninguna ruta de ejecucion - una decision deliberada para permitir su uso en entornos donde el circuito analizado es sensible.
+
+---
 ## 📂 Estructura del Repositorio
 
 ```

@@ -80,11 +80,39 @@ Após iniciar, a aplicação estará disponível em **[http://localhost:3000](ht
 - **Seleção de Modelos:** Escolha entre uma variedade de modelos de código aberto (Qwen, DeepSeek) para o assistente.
 - **Algoritmos Variacionais:** Configure e execute experimentos VQE e QAOA.
 - **Otimizador de Circuitos:** Otimize automaticamente seu circuito para melhor desempenho.
-- **Múltiplas Opções de Exportação:** Exporte seu circuito para QASM, Qiskit, PL, Cirq e Q#.
+- **Múltiplas Opções de Exportação:** Exporte seu circuito para - **Portas Customizadas:** Defina e reutilize suas proprias portas compostas atraves do construtor Make Gate.
+QASM, Qiskit, PennyLane, Cirq, Q# e LaTeX.
 - **Tema Escuro:** Um tema escuro bonito e confortável para os olhos com detalhes em âmbar.
 
 ---
 
+## Screenshot
+
+![Construtor de circuitos](./docs/screenshots/builder.png)
+
+*Construtor de circuitos com a paleta de portas, esferas de Bloch por qubit e exportacao para Qiskit em tempo real.*
+
+---
+
+## Arquitetura
+
+![Arquitetura](./docs/architecture.png)
+
+O Moriarty v2 roda como tres servicos independentes orquestrados por Docker Compose:
+
+| Servico | Stack | Responsabilidade |
+|---|---|---|
+| **frontend** | Next.js 16 (App Router), TypeScript | Construtor de circuitos drag-and-drop, esferas de Bloch, graficos de probabilidade, configuracao de algoritmos |
+| **backend** | FastAPI, Qiskit, Qiskit Aer | Construcao de circuitos a partir de descricoes JSON, simulacao, extracao de statevector, otimizacao, VQE/QAOA, exportacao multi-formato |
+| **ollama** *(opcional)* | Ollama | Assistente em linguagem natural executado **localmente** - nenhum dado de circuito sai da maquina |
+
+**Contrato entre camadas.** O frontend nunca manipula objetos Qiskit. Circuitos trafegam como listas ordenadas de descricoes de porta (`{ name, qubits, params }`), e o backend e o unico responsavel por traduzi-las em um `QuantumCircuit`. A logica quantica fica concentrada em um so lugar e o motor de simulacao pode ser trocado sem tocar na interface.
+
+**Portas suportadas.** Um qubit: H, X, Y, Z, S, T, RX, RY, RZ. Dois qubits: CNOT/CX, CY, CZ, CH, SWAP, CRX, CRY, CRZ, CP. Tres qubits: CCX (Toffoli), CSWAP (Fredkin). Medicao: M. Portas compostas podem ser definidas em tempo de execucao via Make Gate.
+
+**Privado por padrao.** O assistente de IA e opcional e roda em container local. Nenhuma chamada para API de terceiros acontece em qualquer caminho de execucao - decisao deliberada para permitir uso em ambientes onde o circuito analisado e sensivel.
+
+---
 ## 📂 Estrutura do Repositório
 
 ```

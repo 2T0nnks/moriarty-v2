@@ -82,11 +82,39 @@ Once started, the application will be available at **[http://localhost:3000](htt
 - **Model Selection:** Choose from a variety of open-source models (Qwen, DeepSeek) for the assistant.
 - **Variational Algorithms:** Configure and run VQE and QAOA experiments.
 - **Circuit Optimizer:** Automatically optimize your circuit for better performance.
-- **Multiple Export Options:** Export your circuit to QASM, Qiskit, PL, Cirq, and Q#.
+- **Multiple Export Options:** Export your circuit to - **Custom Gates:** Define and reuse your own composite gates through the Make Gate builder.
+QASM, Qiskit, PennyLane, Cirq, Q#, and LaTeX.
 - **Dark Theme:** A beautiful, eye-friendly dark theme with amber accents.
 
 ---
 
+## Screenshot
+
+![Circuit builder](./docs/screenshots/builder.png)
+
+*Circuit builder with the gate palette, per-qubit Bloch spheres and live Qiskit export.*
+
+---
+
+## Architecture
+
+![Architecture](./docs/architecture.png)
+
+Moriarty v2 runs as three independent services orchestrated by Docker Compose:
+
+| Service | Stack | Responsibility |
+|---|---|---|
+| **frontend** | Next.js 16 (App Router), TypeScript | Drag-and-drop circuit builder, Bloch spheres, probability charts, algorithm configuration |
+| **backend** | FastAPI, Qiskit, Qiskit Aer | Circuit construction from JSON descriptions, simulation, statevector extraction, optimization, VQE/QAOA, multi-format export |
+| **ollama** *(optional)* | Ollama | Natural-language assistant running **locally** - no circuit data leaves the machine |
+
+**Layer contract.** The frontend never handles Qiskit objects. Circuits travel as ordered lists of gate descriptions (`{ name, qubits, params }`), and the backend is solely responsible for translating them into a `QuantumCircuit`. Quantum logic stays in one place, and the simulation engine can be swapped without touching the interface.
+
+**Supported gates.** Single-qubit: H, X, Y, Z, S, T, RX, RY, RZ. Two-qubit: CNOT/CX, CY, CZ, CH, SWAP, CRX, CRY, CRZ, CP. Three-qubit: CCX (Toffoli), CSWAP (Fredkin). Measurement: M. Composite gates can be defined at runtime via Make Gate.
+
+**Private by default.** The AI assistant is opt-in and runs in a local container. No third-party API is called on any execution path - a deliberate choice so the tool can be used where the circuit under analysis is sensitive.
+
+---
 ## 📂 Repository Structure
 
 ```
