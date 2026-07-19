@@ -82,8 +82,8 @@ Once started, the application will be available at **[http://localhost:3000](htt
 - **Model Selection:** Choose from a variety of open-source models (Qwen, DeepSeek) for the assistant.
 - **Variational Algorithms:** Configure and run VQE and QAOA experiments.
 - **Circuit Optimizer:** Automatically optimize your circuit for better performance.
-- **Multiple Export Options:** Export your circuit to - **Custom Gates:** Define and reuse your own composite gates through the Make Gate builder.
-QASM, Qiskit, PennyLane, Cirq, Q#, and LaTeX.
+- **Custom Gates:** Define and reuse your own composite gates through the Make Gate builder.
+- **Multiple Export Options:** Export your circuit to QASM, Qiskit, PennyLane, Cirq, Q#, and LaTeX.
 - **Dark Theme:** A beautiful, eye-friendly dark theme with amber accents.
 
 ---

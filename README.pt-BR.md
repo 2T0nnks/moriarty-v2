@@ -80,8 +80,8 @@ Após iniciar, a aplicação estará disponível em **[http://localhost:3000](ht
 - **Seleção de Modelos:** Escolha entre uma variedade de modelos de código aberto (Qwen, DeepSeek) para o assistente.
 - **Algoritmos Variacionais:** Configure e execute experimentos VQE e QAOA.
 - **Otimizador de Circuitos:** Otimize automaticamente seu circuito para melhor desempenho.
-- **Múltiplas Opções de Exportação:** Exporte seu circuito para - **Portas Customizadas:** Defina e reutilize suas proprias portas compostas atraves do construtor Make Gate.
-QASM, Qiskit, PennyLane, Cirq, Q# e LaTeX.
+- **Portas Customizadas:** Defina e reutilize suas proprias portas compostas atraves do construtor Make Gate.
+- **Múltiplas Opções de Exportação:** Exporte seu circuito para QASM, Qiskit, PennyLane, Cirq, Q# e LaTeX.
 - **Tema Escuro:** Um tema escuro bonito e confortável para os olhos com detalhes em âmbar.
 
 ---
